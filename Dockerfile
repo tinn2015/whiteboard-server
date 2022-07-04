@@ -1,5 +1,7 @@
 FROM node:16-alpine
 LABEL AUTHOR="douqiting"
+EXPOSE 3000/tcp
+EXPOSE 80/tcp
 ENV NODE_ENV production
 ENV workpath=/home
 WORKDIR ${workpath}
