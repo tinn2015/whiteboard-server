@@ -10,10 +10,29 @@ import {
 import { Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomsService } from '../rooms/rooms.service';
+import { decode } from '@msgpack/msgpack';
 
 @WebSocketGateway(80, {
   cors: {
     origin: '*',
+  },
+  perMessageDeflate: {
+    threshold: 1, // defaults to 1024
+
+    zlibDeflateOptions: {
+      chunkSize: 16 * 1024, // defaults to 16 * 1024
+    },
+
+    zlibInflateOptions: {
+      windowBits: 15, // defaults to 15, LZ77算法所用内存大小 2的14次方， 这个越大压缩率越大
+      memLevel: 9, // defaults to 8; 8 y约 133KB
+    },
+
+    clientNoContextTakeover: true, // defaults to negotiated value. 每个消息都在单独的内存解压， 避免混淆
+    serverNoContextTakeover: true, // defaults to negotiated value.
+    serverMaxWindowBits: 10, // defaults to negotiated value.
+
+    concurrencyLimit: 10, // defaults to 10
   },
 })
 export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
@@ -40,11 +59,9 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   }
   @SubscribeMessage('draw')
   handleEvent(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    console.log('socket', client.id, data);
     const { roomId } = this.socketMapRoom.get(client.id);
-    client.to(roomId).emit('syncRoomDraw', {
-      ...data,
-    });
+    console.log('draw data', decode(data));
+    client.to(roomId).emit('sync', data);
   }
 
   @SubscribeMessage('cmd')
