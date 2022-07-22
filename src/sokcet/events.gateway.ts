@@ -11,6 +11,11 @@ import { Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomsService } from '../rooms/rooms.service';
 import { decode } from '@msgpack/msgpack';
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+// import { default as Pa } from 'piscina';
+import Piscina = require('piscina');
+import * as path from 'path';
+// import { drawCanvas } from '../utils/worker-threads';
 
 @WebSocketGateway(80, {
   cors: {
@@ -36,8 +41,22 @@ import { decode } from '@msgpack/msgpack';
   },
 })
 export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
-  constructor(private readonly roomsService: RoomsService) {}
+  private pool: Piscina;
+  constructor(private readonly roomsService: RoomsService) {
+    this.worker.on('message', (data) => {
+      console.log(data);
+    });
+    console.log('Pa', Piscina);
+    this.pool = new Piscina({
+      // The URL must be a file:// URL
+      filename: path.resolve(__dirname, '../utils/worker-threads.js'),
+    });
+  }
   private readonly socketMapRoom = new Map();
+  private worker = new Worker('./dist/utils/worker-threads.js', {
+    workerData: { nn: 11 },
+  });
+
   handleConnection(client: any, ...args: any[]) {
     console.log('有人上线', client.id, client.handshake.query.roomId);
     const roomId = client.handshake.query.roomId || uuidv4();
@@ -60,7 +79,12 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   @SubscribeMessage('draw')
   handleEvent(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
     const { roomId } = this.socketMapRoom.get(client.id);
-    console.log('draw data', decode(data));
+    // console.log('draw data', decode(data));
+    // const worker = new Worker(__filename, { workerData: data });
+    // this.worker.postMessage({ workerData: data });
+    this.pool.run({ a: 1, b: 2 });
+
+    // drawCanvas(data);
     client.to(roomId).emit('sync', data);
   }
 
