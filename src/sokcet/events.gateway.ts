@@ -8,14 +8,14 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomsService } from '../rooms/rooms.service';
+import { User } from '../entities/user.entity';
 import { decode } from '@msgpack/msgpack';
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
-// import { default as Pa } from 'piscina';
 import Piscina = require('piscina');
 import * as path from 'path';
-// import { drawCanvas } from '../utils/worker-threads';
 
 @WebSocketGateway(80, {
   cors: {
@@ -42,46 +42,69 @@ import * as path from 'path';
 })
 export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   private pool: Piscina;
-  constructor(private readonly roomsService: RoomsService) {
-    this.worker.on('message', (data) => {
-      console.log(data);
-    });
-    console.log('Pa', Piscina);
+  constructor(
+    private readonly roomsService: RoomsService,
+    @InjectRepository(User) private userRepository: Repository<User>,
+  ) {
     this.pool = new Piscina({
-      // The URL must be a file:// URL
       filename: path.resolve(__dirname, '../utils/worker-threads.js'),
     });
   }
-  private readonly socketMapRoom = new Map();
-  private worker = new Worker('./dist/utils/worker-threads.js', {
-    workerData: { nn: 11 },
-  });
-
-  handleConnection(client: any, ...args: any[]) {
+  async handleConnection(client: any, ...args: any[]) {
     console.log('有人上线', client.id, client.handshake.query.roomId);
-    const roomId = client.handshake.query.roomId || uuidv4();
-    const userId = client.handshake.query.userId;
-    console.log('roomId', roomId);
-    // console.log(this.roomsService.rooms);
-    this.socketMapRoom.set(client.id, { roomId, userId });
-    this.roomsService.joinRoom(roomId, client.id, userId);
+    const roomId: string = client.handshake.query.roomId || uuidv4();
+    const userId: number = client.handshake.query.userId;
+    const name: string = client.handshake.query.userName || '';
+    console.log('roomId', roomId, userId);
+    const user = await this.userRepository.findOne(
+      { id: userId },
+      // { relations: ['room'] },
+    );
+    if (user) {
+      user.roomId = roomId;
+      user.status = 'online';
+      user.socket = client.id;
+      await this.userRepository.save(user);
+    } else {
+      await this.userRepository.save({
+        id: userId,
+        status: 'online',
+        roomId,
+        name,
+        socket: client.id,
+        room: { id: roomId, status: 'living' },
+      });
+    }
+    const users = await this.userRepository.find({ relations: ['room'] });
+    console.log('users:', users);
     client.join(roomId);
-    console.log('sids', client.adapter.sids);
-    return {
-      roomId,
-    };
   }
-  handleDisconnect(client: any) {
+  async handleDisconnect(client: any) {
     // 离线的时候socket.io room中会自动移除
-    const { roomId, userId } = this.socketMapRoom.get(client.id);
-    this.roomsService.leaveRoom(roomId, userId);
+    // 更新房间状态
+    // 更新成员状态
+    const socket = client.id;
+    const user = await this.userRepository.findOne(
+      { socket },
+      { relations: ['room'] },
+    );
+    if (!user) {
+      console.log('user disconnect error');
+      return;
+    }
+    console.log('handleDisconnect', user);
+    user.status = 'offline';
+    await this.userRepository.save(user);
   }
   @SubscribeMessage('draw')
-  handleEvent(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    const { roomId } = this.socketMapRoom.get(client.id);
-    // console.log('draw data', decode(data));
-    // const worker = new Worker(__filename, { workerData: data });
-    // this.worker.postMessage({ workerData: data });
+  async handleEvent(@ConnectedSocket() client: any, @MessageBody() data: any) {
+    const user = await this.userRepository.findOne(
+      { socket: client.id },
+      { relations: ['room'] },
+    );
+    console.log('draw', user);
+    const roomId = user.room.id;
+    // 工作线程
     this.pool.run({ a: 1, b: 2 });
 
     // drawCanvas(data);
@@ -89,8 +112,12 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   }
 
   @SubscribeMessage('cmd')
-  handleCmd(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    const { roomId } = this.socketMapRoom.get(client.id);
+  async handleCmd(@ConnectedSocket() client: any, @MessageBody() data: any) {
+    const user = await this.userRepository.findOne(
+      { socket: client.id },
+      { relations: ['room'] },
+    );
+    const roomId = user.room.id;
     client
       .to(roomId)
       .emit('cmd', { msg: '我是server, 这是我广播的cmd', ...data });

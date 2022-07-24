@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Post } from '@nestjs/common';
+import { Controller, Get, Query, Post, Param } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { GetRoomDto } from './dto/get-room.dto';
 
@@ -7,7 +7,12 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Get()
-  getRoom(@Query() query: GetRoomDto): string {
-    return this.roomsService.getRoom(query.roomId, query.userId);
+  getRooms() {
+    return this.roomsService.getRooms();
+  }
+
+  @Get(':id')
+  getRoom(@Param('id') id: string) {
+    return this.roomsService.getRoom(id);
   }
 }
