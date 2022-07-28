@@ -2,34 +2,25 @@ import {
   Entity,
   Column,
   PrimaryColumn,
+  PrimaryGeneratedColumn,
   Index,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
-  OneToOne,
-  JoinColumn,
+  ManyToOne,
 } from 'typeorm';
-import { User } from './user.entity';
 import { Canvas } from './canvas.entity';
 
 @Entity()
-export class Room {
+export class FabricObject {
   @Index()
   @PrimaryColumn()
   id: string;
 
-  @OneToOne(() => Canvas, { cascade: true })
-  @JoinColumn()
+  @Column('json')
+  object: object;
+
+  @ManyToOne(() => Canvas, (canvas) => canvas.objects, { cascade: true })
   canvas: object;
-
-  @Column({ default: 0 })
-  maxOnlineUser: number;
-
-  @Column('enum', { enum: ['living', 'closed'] })
-  status: string;
-
-  @OneToMany(() => User, (user) => user.room)
-  users: User[];
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

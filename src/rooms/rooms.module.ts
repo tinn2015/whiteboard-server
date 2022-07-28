@@ -4,9 +4,10 @@ import { RoomsController } from './rooms.controller';
 import { RoomsService } from './rooms.service';
 import { Room } from '../entities/room.entity';
 import { User } from '../entities/user.entity';
+import { Canvas } from '../entities/canvas.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Room, User])],
+  imports: [TypeOrmModule.forFeature([Room, User, Canvas])],
   controllers: [RoomsController],
   providers: [RoomsService],
   exports: [RoomsService],

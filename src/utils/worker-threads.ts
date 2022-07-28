@@ -1,5 +1,8 @@
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import { decode } from '@msgpack/msgpack';
+import fabric = require('fabric');
+
+// const canvas = new fabric.StaticCanvas(null, { width: 200, height: 200 });
 
 // if (isMainThread) {
 //   module.exports = function drawCanvas(script) {
@@ -32,7 +35,9 @@ import { decode } from '@msgpack/msgpack';
 //   }
 // }
 // parentPort.postMessage(workerData);
-export default ({ a, b }) => {
-  console.log('111');
-  return a + b;
+export default (data) => {
+  const decryptData = decode(data);
+  // console.log('canvas', canvas);
+  // console.log('fabric', fabric);
+  return decryptData;
 };
