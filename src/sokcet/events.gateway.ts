@@ -142,8 +142,22 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       { relations: ['room'] },
     );
     const roomId = user.room.id;
-    client
-      .to(roomId)
-      .emit('cmd', { msg: '我是server, 这是我广播的cmd', ...data });
+    client.to(roomId).emit('cmd', data);
+    // 工作线程
+    const decryptData = await this.pool.run(data);
+    this.canvasService.cmdHandle(roomId, decryptData);
+  }
+
+  // 画笔数据持久化
+  @SubscribeMessage('ms')
+  async toServe(@ConnectedSocket() client: any, @MessageBody() data: any) {
+    const user = await this.userRepository.findOne(
+      { socket: client.id },
+      { relations: ['room'] },
+    );
+    const roomId = user.room.id;
+    // 工作线程
+    const decryptData = await this.pool.run(data);
+    this.canvasService.modifiedObjects(roomId, decryptData);
   }
 }

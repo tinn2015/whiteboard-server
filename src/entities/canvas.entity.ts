@@ -7,8 +7,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Room } from './room.entity';
 import { FabricObject } from './fabricObject.entity';
 
 @Entity()

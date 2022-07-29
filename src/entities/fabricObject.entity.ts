@@ -19,7 +19,10 @@ export class FabricObject {
   @Column('json')
   object: object;
 
-  @ManyToOne(() => Canvas, (canvas) => canvas.objects, { cascade: true })
+  @ManyToOne(() => Canvas, (canvas) => canvas.objects, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   canvas: object;
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
