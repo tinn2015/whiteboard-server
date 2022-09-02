@@ -7,20 +7,26 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
   OneToOne,
 } from 'typeorm';
-import { User } from './user.entity';
+import { Users } from './user.entity';
 import { Room } from './room.entity';
 import { FabricObject } from './fabricObject.entity';
 
 @Entity()
 export class Canvas {
-  @Index()
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
   roomId: string;
 
+  @ManyToOne(() => Room, (room) => room.canvas, { cascade: true })
+  room: Room;
+
   @Column('json', { default: { background: '#262626' } })
-  cProps: { background: string };
+  cProps: { background: string; backgroundImage: null | string };
 
   @Column('json', { default: [] })
   objectIds: string[];

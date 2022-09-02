@@ -10,12 +10,12 @@ import {
 import { Room } from './room.entity';
 
 @Entity()
-export class User {
+export class Users {
   @PrimaryColumn()
-  id: number;
+  id: string;
 
-  @Column()
-  name: string;
+  @Column({ default: '' })
+  username: string | null;
 
   @Column('enum', { enum: ['online', 'offline'] })
   status: string;

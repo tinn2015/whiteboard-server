@@ -1,11 +1,23 @@
 import { Injectable, Logger, Inject, LoggerService } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, getConnection } from 'typeorm';
 import { Canvas } from '../entities/canvas.entity';
 import { FabricObject } from '../entities/fabricObject.entity';
-import { storepaths, genObject } from './drawUtils';
+import { storepaths, genObject, restorePath } from './drawUtils';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ModifiedObjects } from '../typing';
+import { CreateCanvasDto } from './dto/create-canvas.dto';
+import { DeleteCanvasDto } from './dto/delete-canvas.dto';
+import * as CONTANTS from '../common/constants';
+import { threadId } from 'worker_threads';
+
+const actionMapProps = {
+  drag: ['left', 'top'],
+  scale: ['scaleX', 'scaleY'],
+  scaleX: ['scaleX'],
+  scaleY: ['scaleY'],
+  rotate: ['angle'],
+};
 
 @Injectable()
 export class CanvasService {
@@ -32,15 +44,20 @@ export class CanvasService {
    * @param data
    */
   async draw(roomId: string, data: any) {
-    this.logger.log('info', '普通画笔数据', data);
     const { qn } = data;
 
-    if (!qn.t || qn.t === 'as' || qn.t === 'ds' || qn.t === 'group') return;
+    if (
+      !qn.t ||
+      qn.t === CONTANTS.DRAW_ACTIVE_SELECTION ||
+      qn.t === CONTANTS.DRAW_DESELECTION ||
+      qn.t === CONTANTS.DRAW_GROUP
+    )
+      return;
 
-    this.logger.log('info', `draw ${qn.t}`, qn);
+    this.logger.log('info', '普通画笔数据', data);
 
     // 缓存path
-    if (qn.t === 'fp') {
+    if (qn.t === CONTANTS.DRAW_FREE_PATHS) {
       storepaths(data);
       return;
     }
@@ -50,77 +67,103 @@ export class CanvasService {
 
     let canvas = null;
     try {
-      canvas = await this.canvasRepository.findOne({ roomId });
+      const { pid } = qn;
+      canvas = await this.canvasRepository.findOne({ id: pid });
     } catch (error) {
       this.logger.error('db error canvasRepository.findOne', { roomId, error });
     }
-    const { objectIds } = await this.canvasRepository.findOne({ roomId });
-    console.log('objectIds', objectIds, qn.oid);
+    const { objectIds } = canvas;
+    console.log('draw canvas', canvas);
     if (objectIds.includes(qn.oid)) {
       // 已有object 进行修改
       if (data.at) {
+        const { oid } = qn;
+        const fabricObj = await this.fabricObjectRepository.findOne({
+          id: oid,
+        });
+        const props = actionMapProps[data.at];
+        props.forEach((key: string) => {
+          fabricObj.object[key] = data[key];
+        });
+        console.log('fabricObj', fabricObj);
+        await this.fabricObjectRepository.save(fabricObj);
+        this.logger.log('info', `更新已有画笔 ${qn.oid}`);
       } else {
+        // 新建fabric对象
         const _object = genObject(data);
         await this.fabricObjectRepository.save({
           id: qn.oid,
+          pageId: qn.pid,
           object: _object,
         });
-        this.logger.log('info', `更新已有画笔 ${qn.oid}`, _object);
+        this.logger.log('info', `替换已有画笔 ${qn.oid}`, _object);
       }
     } else {
       const _object = genObject(data);
-      // await this.canvasRepository.save({
-      //   roomId,
-      //   objectIds: [qn.oid],
-      // });
       objectIds.push(qn.oid);
+      const queryRunner = getConnection().createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
       try {
-        await this.fabricObjectRepository.save({
+        const canvas = await this.canvasRepository.findOne({
+          id: qn.pid,
+          roomId,
+        });
+        console.log('不存在的画笔', canvas);
+        canvas.objectIds = objectIds;
+        const object = this.fabricObjectRepository.create({
           id: qn.oid,
+          pageId: qn.pid,
           object: _object,
           canvas: {
+            id: qn.pid,
             roomId,
-            objectIds,
           },
         });
-      } catch (error) {
+        await queryRunner.manager.save(canvas);
+        await queryRunner.manager.save(object);
+
+        await queryRunner.commitTransaction();
+        this.logger.log('info', `新建画笔 ${qn.oid}`, _object);
+      } catch (err) {
+        // since we have errors lets rollback the changes we made
+        await queryRunner.rollbackTransaction();
         this.logger.error('db error fabricObjectRepository.save', {
           roomId,
-          error,
+          data,
+          error: err,
         });
+      } finally {
+        // you need to release a queryRunner which was manually instantiated
+        await queryRunner.release();
       }
-      this.logger.log('info', `新建画笔 ${qn.oid}`, _object);
     }
   }
 
   async cmdHandle(roomId: string, data: any) {
     const { cmd } = data;
     this.logger.log('info', `收到cmd消息`, data);
-    if (cmd === 'clear') {
-      let canvas = null;
-      try {
-        canvas = await this.canvasRepository.findOne({ roomId });
-        if (!canvas.objectIds.length) {
-          this.logger.warn(`roomId: ${roomId} 的 canvas 中没有 objectIds`);
-          return;
-        }
-        const fabricObjects = await this.fabricObjectRepository.findByIds(
-          canvas.objectIds,
-        );
-        await this.fabricObjectRepository.remove(fabricObjects);
-        canvas.objectIds = [];
-        await this.canvasRepository.save(canvas);
-        this.logger.log('info', `清除画布成功， userId: ${data.uid}`);
-      } catch (error) {
-        this.logger.error('db error, cmd clear', { roomId, error });
-      }
-      this;
+    switch (cmd) {
+      case CONTANTS.CMD_CLEAR:
+        this._cmdClear(roomId, data);
+        break;
+      case CONTANTS.CMD_REMOVE:
+        this._cmdRemove(roomId, data);
+        break;
+      case CONTANTS.CMD_BGCOLOR:
+        this._setBackgroundColor(roomId, data);
+        break;
+      case CONTANTS.CMD_BGIMG:
+        this._setBackgroundImage(roomId, data);
+        break;
+      default:
+        this.logger.error('未匹配得cmd', data);
     }
   }
 
   // 批量修改保存到数据库
   async modifiedObjects(roomId: string, data: ModifiedObjects) {
-    this.logger.log('info', `${roomId} 批量修改 objects`, data);
+    this.logger.log('info', `room: ${roomId} 批量修改 objects`, data);
     const { at, mos } = data;
     const objectIds = Object.keys(mos);
     console.log('modifiedObjects', objectIds);
@@ -145,26 +188,192 @@ export class CanvasService {
   }
 
   // 历史画布数据
-  async getFabricData(roomId: string) {
+  async getFabricData(roomId: string, pageId: number) {
     const canvas = await this.canvasRepository.findOne(
-      { roomId },
+      { id: pageId },
       { relations: ['objects'] },
     );
-    this.logger.log('info', `获取历史画布 ${roomId}`);
     // 没有数据
     if (!canvas) {
-      return null;
+      this.logger.log('error', `不存在画布 roomId:${roomId} pageId: ${pageId}`);
+      return {
+        status: 0,
+        message: '不存在的画布',
+      };
     }
+    this.logger.log('info', `获取历史画布 roomId:${roomId} pageId: ${pageId}`);
     const { objects, cProps } = canvas;
     const objs = [];
     Object.keys(objects).forEach((key: string) => {
       const obj = objects[key];
+      console.log('历史画布数据', obj);
+      // obj.object.isReceived = true;
       objs.push(obj.object);
     });
     return {
       version: '5.2.0',
       background: cProps.background,
+      backgroundImage: cProps.backgroundImage,
       objects: objs,
+    };
+  }
+
+  /**
+   * cmd clear 清除画布
+   * @param roomId
+   * @param data
+   * @returns
+   */
+  async _cmdClear(roomId: string, data) {
+    let canvas = null;
+    try {
+      canvas = await this.canvasRepository.findOne({ id: data.pid });
+      if (!canvas.objectIds.length) {
+        this.logger.warn(`roomId: ${roomId} 的 canvas 中没有 objectIds`);
+        return;
+      }
+      const fabricObjects = await this.fabricObjectRepository.findByIds(
+        canvas.objectIds,
+      );
+
+      // todo 事务
+      await this.fabricObjectRepository.remove(fabricObjects);
+      canvas.objectIds = [];
+      await this.canvasRepository.save(canvas);
+      this.logger.log('info', `清除画布成功， userId: ${data.uid}`);
+    } catch (error) {
+      this.logger.error('db error, cmd clear', { roomId, error });
+    }
+  }
+
+  /**
+   * cmd remove 删除对象
+   * @param roomId
+   * @param data
+   */
+  async _cmdRemove(roomId: string, data) {
+    console.log(roomId, data);
+    const { oid } = data.qn;
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const canvas = await this.canvasRepository.findOne({ id: data.pid });
+      const index = canvas.objectIds.findIndex((i: string) => {
+        return i === oid;
+      });
+      if (index > -1) {
+        canvas.objectIds.splice(index, 1);
+      }
+      const object = await this.fabricObjectRepository.findOne({
+        id: oid,
+      });
+      // 保存path, undo/redo
+      if (object.object.qn.t === 'path') {
+        restorePath(oid, object.object.path);
+      }
+      await queryRunner.manager.save(canvas);
+      await queryRunner.manager.remove(object);
+
+      await queryRunner.commitTransaction();
+      this.logger.log('info', `删除画笔 ${oid}`, data);
+    } catch (err) {
+      // since we have errors lets rollback the changes we made
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
+    } finally {
+      // you need to release a queryRunner which was manually instantiated
+      await queryRunner.release();
+    }
+    // try {
+    //   const objEntity = await this.fabricObjectRepository.findOne({ id: oid });
+    //   await this.fabricObjectRepository.remove(objEntity);
+    //   this.logger.log('info', `room: ${roomId} 删除画笔成功`, data);
+    // } catch (err) {
+    //   this.logger.error(`room: ${roomId} 删除画笔失败`, data);
+    // }
+  }
+
+  /**
+   * 修改背景色
+   * @param roomId
+   * @param data
+   */
+  async _setBackgroundColor(roomId: string, data) {
+    try {
+      const canvasEntity = await this.canvasRepository.findOne({
+        id: data.pid,
+      });
+      canvasEntity.cProps.background = data.color;
+      this.canvasRepository.save(canvasEntity);
+      this.logger.log('info', `room: ${roomId} 背景修改成功`, data);
+    } catch (err) {
+      this.logger.error(`room: ${roomId} 修改背景色失败`, data);
+    }
+  }
+
+  /**
+   * 修改背景图片
+   * @param roomId
+   * @param data
+   */
+  async _setBackgroundImage(roomId: string, data) {
+    try {
+      const canvasEntity = await this.canvasRepository.findOne({
+        id: data.pid,
+      });
+      canvasEntity.cProps.backgroundImage = data.url;
+      if (data.color) {
+        canvasEntity.cProps.background = data.color;
+      }
+      this.canvasRepository.save(canvasEntity);
+      this.logger.log('info', `room: ${roomId} 背景图片修改成功`, data);
+    } catch (err) {
+      this.logger.error(`room: ${roomId} 修改背景图片失败`, data);
+    }
+  }
+
+  /**
+   * 创建画布
+   * @param createCanvasDto
+   */
+  async createCanvas(createCanvas: CreateCanvasDto) {
+    console.log('createCanvas', createCanvas);
+    const { roomId } = createCanvas;
+    const canvas = await this.canvasRepository.save({
+      roomId,
+      room: {
+        id: roomId,
+      },
+    });
+    return {
+      pageId: canvas.id,
+    };
+  }
+
+  /**
+   * 删除画布
+   * @param deleteCanvasDto
+   * @returns
+   */
+  async deleteCanvas(deleteCanvasDto: DeleteCanvasDto) {
+    const { roomId, pageId } = deleteCanvasDto;
+    const canvas = await this.canvasRepository.findOne({
+      id: +pageId,
+    });
+    canvas.objectIds.forEach(async (objectId: string) => {
+      const fabricObject = await this.fabricObjectRepository.findOne({
+        id: objectId,
+      });
+      await this.fabricObjectRepository.remove(fabricObject);
+    });
+    await this.canvasRepository.remove(canvas);
+    this.logger.log(
+      'info',
+      `delete canvas pageId: ${pageId} success, roomId:${roomId}`,
+    );
+    return {
+      message: 'delete success',
     };
   }
 }

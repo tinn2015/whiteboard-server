@@ -7,29 +7,28 @@ import {
   UpdateDateColumn,
   OneToMany,
   OneToOne,
+  ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { Users } from './user.entity';
 import { Canvas } from './canvas.entity';
 
 @Entity()
 export class Room {
-  @Index()
   @PrimaryColumn()
   id: string;
 
-  @OneToOne(() => Canvas, { cascade: true })
-  @JoinColumn()
-  canvas: object;
+  @OneToMany(() => Canvas, (canvas) => canvas.roomId)
+  canvas: Canvas[];
 
   @Column({ default: 0 })
   maxOnlineUser: number;
 
-  @Column('enum', { enum: ['living', 'closed'] })
+  @Column('enum', { enum: ['living', 'closed'], default: 'living' })
   status: string;
 
-  @OneToMany(() => User, (user) => user.room)
-  users: User[];
+  @OneToMany(() => Users, (user) => user.room)
+  users: Users[];
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

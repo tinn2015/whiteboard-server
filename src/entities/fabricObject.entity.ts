@@ -12,16 +12,17 @@ import { Canvas } from './canvas.entity';
 
 @Entity()
 export class FabricObject {
-  @Index()
   @PrimaryColumn()
   id: string;
 
+  @Column()
+  pageId: number;
+
   @Column('json')
-  object: object;
+  object: any;
 
   @ManyToOne(() => Canvas, (canvas) => canvas.objects, {
     cascade: true,
-    onDelete: 'CASCADE',
   })
   canvas: object;
 

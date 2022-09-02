@@ -38,5 +38,5 @@ $ npm run test:cov
 
 ## docker
 ```bash
-docker run -d -p 8090:3000 -p 80:80 -v /home/whiteboard-web:/home/whiteboard-web image:tag
+docker run -d -p 8090:3000 -p 80:80 -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
 ```
