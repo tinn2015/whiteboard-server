@@ -13,10 +13,12 @@ export function genObject(data: any) {
     if (!path) {
       return;
     }
-    const pathString = path.reduce((pre: string, cur: string[]) => {
-      pre += ' ' + cur.join(' ');
-      return pre;
-    }, '');
+    const pathString = path
+      .sort((a, b) => a.index - b.index)
+      .reduce((pre, cur) => {
+        pre += ' ' + cur.path.join(' ');
+        return pre;
+      }, '');
     freePaths.delete(qn.oid);
     console.log('freePaths', freePaths);
     obj = new fabric.Path(pathString, data);
@@ -36,7 +38,7 @@ export function genObject(data: any) {
   }
   const res = obj.toObject();
   res.qn = qn;
-  res.qn.isReceived = true;
+  res.qn.sync = false;
   return res;
 }
 
@@ -44,13 +46,18 @@ export function updateObj(data) {
   const { qn } = data;
 }
 
+/**
+ * 保存path 轨迹
+ * @param data
+ */
 export function storepaths(data) {
   const { qn } = data;
   const path = freePaths.get(qn.oid);
+  console.log('path', data);
   if (!path) {
-    freePaths.set(qn.oid, [data.path]);
+    freePaths.set(qn.oid, [{ path: data.path, index: data.index }]);
   } else {
-    path.push(data.path);
+    path.push({ path: data.path, index: data.index });
     freePaths.set(qn.oid, path);
   }
 }

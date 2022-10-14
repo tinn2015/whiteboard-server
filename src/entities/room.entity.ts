@@ -18,7 +18,7 @@ export class Room {
   @PrimaryColumn()
   id: string;
 
-  @OneToMany(() => Canvas, (canvas) => canvas.roomId)
+  @OneToMany(() => Canvas, (canvas) => canvas.room)
   canvas: Canvas[];
 
   @Column({ default: 0 })

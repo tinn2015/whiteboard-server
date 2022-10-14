@@ -69,10 +69,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // 更新房间状态
     // 更新成员状态
     const socket = client.id;
-    const user = await this.userRepository.findOne(
-      { socket },
-      { relations: ['room'] },
-    );
+    const user = await this.userRepository.findOne({ socket });
     if (!user) {
       console.log('user disconnect error');
       return;
@@ -84,9 +81,18 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
 
     // 离线三分钟， 清除user
     setTimeout(async () => {
+      console.log('socket', client.nsp.sockets.size);
       const user = await this.userRepository.findOne({ socket });
       if (user.status === 'offline') {
-        this.userRepository.remove(user);
+        await this.userRepository.remove(user);
+        const room = await this.roomRepository.findOne(
+          { id: user.roomId },
+          { relations: ['users', 'canvas'] },
+        );
+        if (client.nsp.sockets.size === 0) {
+          room.status = 'closed';
+          this.roomRepository.save(room);
+        }
       }
     }, 3 * 60 * 1000);
     this.logger.log('info', `user ${user.id} 断开 roomId: ${user.roomId}`);
@@ -97,6 +103,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     console.log('joinRoom', data);
     const { roomId = uuidv4(), userId, username = '', pageId } = data;
     console.log('userId', roomId, userId, username);
+    this.logger.log('info', `joinRoom roomId: ${roomId}, pageId: ${pageId}`);
     this.logger.log('info', `user: ${userId} socket connect`);
     let user = null;
     try {
@@ -129,11 +136,15 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     }
 
     // 初始化时pageId为undefined 自动创建画布
+    let newPageId = 0;
     if (pageId === 'undefined') {
       const canvas = await this._createCanvas(roomId);
+      console.log('pageId === undefined', canvas);
+      newPageId = canvas.id;
       client.emit('joinRoom', { pageId: canvas.id });
     } else {
       const canvas = await this.canvasRepository.findOne({ id: pageId });
+      console.log('=============canvas===========', canvas, pageId);
       if (!canvas) {
         // 自动创建画布
         const canvas = await this._createCanvas(roomId);
@@ -143,14 +154,16 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
           `创建canvas, roomId${roomId}, user:${userId}, pageId: ${pageId}`,
         );
       } else {
-        client.emit('joinRoom', { pageId });
+        client.emit('joinRoom', { pageId, roomId });
       }
     }
 
     client.join(roomId);
     this.logger.log(
       'info',
-      `user: ${userId} join room  roomId:${roomId} pageId: ${pageId}`,
+      `user: ${userId} join room  roomId:${roomId} pageId: ${
+        pageId || newPageId
+      }`,
     );
   }
 
@@ -166,11 +179,20 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       this.logger.error('draw get user error', error);
     }
     console.log('draw', user);
+    if (!user) {
+      this.logger.error(`不存在的user, socket.id: ${client.id}, 请先joinRoom`);
+      const errMsg = JSON.stringify({
+        msg: 'error: need joinRoom',
+      });
+      client.emit(errMsg);
+      // client.disconnect(true);
+      return;
+    }
     const roomId = user.room.id;
     // 工作线程
     const decryptData = await this.pool.run(data);
-    this.canvasService.draw(roomId, decryptData);
     client.to(roomId).emit('syncRoomDraw', data);
+    this.canvasService.draw(roomId, decryptData);
   }
 
   @SubscribeMessage('cmd')

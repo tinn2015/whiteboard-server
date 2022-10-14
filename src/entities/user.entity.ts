@@ -6,6 +6,7 @@ import {
   ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 import { Room } from './room.entity';
 
@@ -29,7 +30,9 @@ export class Users {
   @Column()
   roomId: string;
 
-  @ManyToOne(() => Room, (room) => room.users, { cascade: true })
+  @ManyToOne(() => Room, (room) => room.users, {
+    cascade: true,
+  })
   room: Room;
 
   @CreateDateColumn({ type: 'timestamp without time zone' })

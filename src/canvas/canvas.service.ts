@@ -105,23 +105,22 @@ export class CanvasService {
       await queryRunner.connect();
       await queryRunner.startTransaction();
       try {
-        const canvas = await this.canvasRepository.findOne({
-          id: qn.pid,
-          roomId,
-        });
+        // const canvas = await this.canvasRepository.findOne({
+        //   id: qn.pid,
+        //   roomId,
+        // });
         console.log('不存在的画笔', canvas);
-        canvas.objectIds = objectIds;
         const object = this.fabricObjectRepository.create({
           id: qn.oid,
-          pageId: qn.pid,
+          pageId: +qn.pid,
           object: _object,
           canvas: {
-            id: qn.pid,
-            roomId,
+            id: +qn.pid,
           },
         });
-        await queryRunner.manager.save(canvas);
+        // canvas.objects.push(object);
         await queryRunner.manager.save(object);
+        await queryRunner.manager.save(canvas);
 
         await queryRunner.commitTransaction();
         this.logger.log('info', `新建画笔 ${qn.oid}`, _object);
@@ -129,6 +128,7 @@ export class CanvasService {
         // since we have errors lets rollback the changes we made
         await queryRunner.rollbackTransaction();
         this.logger.error('db error fabricObjectRepository.save', {
+          pageId: +qn.pid,
           roomId,
           data,
           error: err,
@@ -207,7 +207,6 @@ export class CanvasService {
     Object.keys(objects).forEach((key: string) => {
       const obj = objects[key];
       console.log('历史画布数据', obj);
-      // obj.object.isReceived = true;
       objs.push(obj.object);
     });
     return {
@@ -348,6 +347,7 @@ export class CanvasService {
     });
     return {
       pageId: canvas.id,
+      roomId,
     };
   }
 
@@ -361,12 +361,10 @@ export class CanvasService {
     const canvas = await this.canvasRepository.findOne({
       id: +pageId,
     });
-    canvas.objectIds.forEach(async (objectId: string) => {
-      const fabricObject = await this.fabricObjectRepository.findOne({
-        id: objectId,
-      });
-      await this.fabricObjectRepository.remove(fabricObject);
-    });
+    const fabricObjects = await this.fabricObjectRepository.findByIds(
+      canvas.objectIds,
+    );
+    await this.fabricObjectRepository.remove(fabricObjects);
     await this.canvasRepository.remove(canvas);
     this.logger.log(
       'info',
@@ -375,5 +373,24 @@ export class CanvasService {
     return {
       message: 'delete success',
     };
+  }
+
+  async batchDeleteCanvas(ids: number[], roomId: string) {
+    const canvas = await this.canvasRepository.findByIds(ids);
+    if (canvas) {
+      canvas.forEach((canvasPage) => {
+        canvasPage.objectIds.forEach(async (objectId: string) => {
+          const fabricObject = await this.fabricObjectRepository.findOne({
+            id: objectId,
+          });
+          await this.fabricObjectRepository.remove(fabricObject);
+        });
+      });
+    }
+    await this.canvasRepository.remove(canvas);
+    this.logger.log(
+      'info',
+      `batch delete canvas ids: ${ids} success, room: ${roomId}`,
+    );
   }
 }

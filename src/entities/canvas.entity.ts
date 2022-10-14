@@ -9,6 +9,7 @@ import {
   OneToMany,
   ManyToOne,
   OneToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Users } from './user.entity';
 import { Room } from './room.entity';
@@ -22,10 +23,17 @@ export class Canvas {
   @Column()
   roomId: string;
 
-  @ManyToOne(() => Room, (room) => room.canvas, { cascade: true })
+  @ManyToOne(() => Room, (room) => room.canvas, {
+    cascade: true,
+  })
   room: Room;
 
-  @Column('json', { default: { background: '#262626' } })
+  @Column('json', {
+    default: {
+      background: '#282535',
+      backgroundImage: '/images/background/x2/dark.png',
+    },
+  })
   cProps: { background: string; backgroundImage: null | string };
 
   @Column('json', { default: [] })

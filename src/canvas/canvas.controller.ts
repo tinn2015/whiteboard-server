@@ -21,6 +21,11 @@ export class CanvasController {
     return this.canvasService.createCanvas(createCanvasDto);
   }
 
+  /**
+   * 删除画布
+   * @param deleteCanvasDto
+   * @returns
+   */
   @Delete()
   deleteCanvas(@Body() deleteCanvasDto: DeleteCanvasDto) {
     return this.canvasService.deleteCanvas(deleteCanvasDto);
