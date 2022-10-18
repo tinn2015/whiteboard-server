@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RoomsController } from './rooms.controller';
 import { RoomsService } from './rooms.service';
@@ -10,8 +10,8 @@ import { Canvas } from '../entities/canvas.entity';
 
 @Module({
   imports: [
+    forwardRef(() => CanvasModule),
     TypeOrmModule.forFeature([Room, Users, Canvas]),
-    CanvasModule,
     UsersModule,
   ],
   controllers: [RoomsController],

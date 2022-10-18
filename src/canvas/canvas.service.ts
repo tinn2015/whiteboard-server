@@ -1,6 +1,13 @@
-import { Injectable, Logger, Inject, LoggerService } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  LoggerService,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, getConnection } from 'typeorm';
+import { EventGateway } from '../sokcet/events.gateway';
 import { Canvas } from '../entities/canvas.entity';
 import { FabricObject } from '../entities/fabricObject.entity';
 import { storepaths, genObject, restorePath } from './drawUtils';
@@ -28,6 +35,8 @@ export class CanvasService {
     @InjectRepository(FabricObject)
     private fabricObjectRepository: Repository<FabricObject>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    @Inject(forwardRef(() => EventGateway))
+    private readonly socketEventGateway: EventGateway,
   ) {
     // this.staticCanvas = new fabric.StaticCanvas(null, {
     //   width: 2000,
@@ -338,13 +347,14 @@ export class CanvasService {
    */
   async createCanvas(createCanvas: CreateCanvasDto) {
     console.log('createCanvas', createCanvas);
-    const { roomId } = createCanvas;
+    const { roomId, userId } = createCanvas;
     const canvas = await this.canvasRepository.save({
       roomId,
       room: {
         id: roomId,
       },
     });
+    this.socketEventGateway.newWhiteboard(roomId, canvas.id, userId);
     return {
       pageId: canvas.id,
       roomId,

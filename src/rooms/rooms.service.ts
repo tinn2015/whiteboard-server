@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from '../entities/room.entity';
@@ -13,6 +13,7 @@ import { DeleteRoomDto } from './dto/delete-room.dto';
 @Injectable()
 export class RoomsService {
   constructor(
+    @Inject(forwardRef(() => CanvasService))
     private readonly canvasService: CanvasService,
     private readonly usersService: UsersService,
     @InjectRepository(Room) private roomRepository: Repository<Room>,

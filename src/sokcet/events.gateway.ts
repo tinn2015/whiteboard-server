@@ -6,22 +6,23 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
   ConnectedSocket,
+  WebSocketServer,
 } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
+import { Socket, Server } from 'socket.io';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Logger, Inject } from '@nestjs/common';
+import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { RoomsService } from '../rooms/rooms.service';
 import { CanvasService } from '../canvas/canvas.service';
 import { Users } from '../entities/user.entity';
 import { Room } from '../entities/room.entity';
 import { Canvas } from '../entities/canvas.entity';
-import { decode } from '@msgpack/msgpack';
+import { decode, encode } from '@msgpack/msgpack';
 import Piscina = require('piscina');
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as path from 'path';
 
+const io = new Server();
 @WebSocketGateway(80, {
   cors: {
     origin: '*',
@@ -48,7 +49,8 @@ import * as path from 'path';
 export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   private pool: Piscina;
   constructor(
-    private readonly roomsService: RoomsService,
+    // private readonly canvasService: CanvasService,
+    @Inject(forwardRef(() => CanvasService))
     private readonly canvasService: CanvasService,
     @InjectRepository(Users) private userRepository: Repository<Users>,
     @InjectRepository(Room) private roomRepository: Repository<Room>,
@@ -61,6 +63,10 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
 
     console.log('process.env', process.env.NODE_ENV);
   }
+
+  @WebSocketServer()
+  server: Server;
+
   async handleConnection(client: any, ...args: any[]) {
     return true;
   }
@@ -103,7 +109,10 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     console.log('joinRoom', data);
     const { roomId = uuidv4(), userId, username = '', pageId } = data;
     console.log('userId', roomId, userId, username);
-    this.logger.log('info', `joinRoom roomId: ${roomId}, pageId: ${pageId}`);
+    this.logger.log(
+      'info',
+      `joinRoom roomId: ${roomId}, pageId: ${pageId}, userId: ${userId}`,
+    );
     this.logger.log('info', `user: ${userId} socket connect`);
     let user = null;
     try {
@@ -120,7 +129,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       await this.userRepository.save(user);
       this.logger.log('info', `已存在user ${userId}`);
     } else {
-      const user = await this.userRepository.save({
+      user = await this.userRepository.save({
         id: userId,
         status: 'online',
         roomId,
@@ -141,20 +150,20 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       const canvas = await this._createCanvas(roomId);
       console.log('pageId === undefined', canvas);
       newPageId = canvas.id;
-      client.emit('joinRoom', { pageId: canvas.id });
+      client.emit('joinRoom', { pageId: canvas.id, roomId, userId: user.id });
     } else {
       const canvas = await this.canvasRepository.findOne({ id: pageId });
       console.log('=============canvas===========', canvas, pageId);
       if (!canvas) {
         // 自动创建画布
         const canvas = await this._createCanvas(roomId);
-        client.emit('joinRoom', { pageId: canvas.id });
+        client.emit('joinRoom', { pageId: canvas.id, roomId, userId: user.id });
         this.logger.log(
           'info',
           `创建canvas, roomId${roomId}, user:${userId}, pageId: ${pageId}`,
         );
       } else {
-        client.emit('joinRoom', { pageId, roomId });
+        client.emit('joinRoom', { pageId, roomId, userId: user.id });
       }
     }
 
@@ -221,8 +230,35 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     this.canvasService.modifiedObjects(roomId, decryptData);
   }
 
+  // 新建白板页广播
+  async newWhiteboard(roomId: string, pageId: number, userId: string) {
+    this.logger.log(
+      'info',
+      `userId: ${userId}, roomId: ${roomId} create new Page: ${pageId}`,
+    );
+    const user = await this.userRepository.findOne({ id: userId });
+    this.logger.log('info', `newWhiteboard get user:${JSON.stringify(user)}`);
+    const sockets = await this.server.in(roomId).fetchSockets();
+    sockets.forEach((socket) => {
+      if (socket.id !== user.socket) {
+        socket.emit(
+          'cmd',
+          encode(
+            {
+              roomId,
+              pageId,
+              cmd: 'np',
+            },
+            {},
+          ),
+        ); // np -> newPage
+      }
+    });
+    console.log('===sockets===', sockets);
+  }
+
   // 创建画布
-  async _createCanvas(roomId) {
+  private async _createCanvas(roomId) {
     const canvas = await this.canvasRepository.save({
       roomId,
       room: {
