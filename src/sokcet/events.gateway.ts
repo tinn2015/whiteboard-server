@@ -95,6 +95,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
           { id: user.roomId },
           { relations: ['users', 'canvas'] },
         );
+        // 更新房间状态
         if (client.nsp.sockets.size === 0) {
           room.status = 'closed';
           this.roomRepository.save(room);

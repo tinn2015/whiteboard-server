@@ -36,9 +36,6 @@ export class Canvas {
   })
   cProps: { background: string; backgroundImage: null | string };
 
-  @Column('json', { default: [] })
-  objectIds: string[];
-
   @OneToMany(() => FabricObject, (fabricObject) => fabricObject.canvas)
   objects: object;
 
