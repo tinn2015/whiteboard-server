@@ -1,0 +1,24 @@
+version: '2.x'
+services:
+  wbserver:
+    restart: always
+    build: .
+    ports:
+      - "8070:3000"
+      - "8050:80"
+    volumes:
+      - /home/whiteboard-web:/home/whiteboard-web
+      - /home/server-logs:/home/logs
+    command: 
+      - echo wbserver launch success
+      - echo node -v
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - "5431:5432"
+    environment:
+      - POSTGRES_PASSWORD=pass123
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - /home/postgre/data:/var/lib/postgresql/data/pgdata

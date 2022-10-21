@@ -232,7 +232,12 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   }
 
   // 新建白板页广播
-  async newWhiteboard(roomId: string, pageId: number, userId: string) {
+  async newWhiteboard(
+    roomId: string,
+    pageId: number,
+    userId: string,
+    fromPage: string,
+  ) {
     this.logger.log(
       'info',
       `userId: ${userId}, roomId: ${roomId} create new Page: ${pageId}`,
@@ -240,21 +245,23 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     const user = await this.userRepository.findOne({ id: userId });
     this.logger.log('info', `newWhiteboard get user:${JSON.stringify(user)}`);
     const sockets = await this.server.in(roomId).fetchSockets();
-    sockets.forEach((socket) => {
-      if (socket.id !== user.socket) {
-        socket.emit(
-          'cmd',
-          encode(
-            {
-              roomId,
-              pageId,
-              cmd: 'np',
-            },
-            {},
-          ),
-        ); // np -> newPage
-      }
-    });
+    sockets &&
+      sockets.forEach((socket) => {
+        if (socket.id !== user.socket) {
+          socket.emit(
+            'cmd',
+            encode(
+              {
+                roomId,
+                pageId,
+                pid: fromPage,
+                cmd: 'np',
+              },
+              {},
+            ),
+          ); // np -> newPage
+        }
+      });
     console.log('===sockets===', sockets);
   }
 

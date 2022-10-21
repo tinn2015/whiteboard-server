@@ -321,14 +321,14 @@ export class CanvasService {
    */
   async createCanvas(createCanvas: CreateCanvasDto) {
     console.log('createCanvas', createCanvas);
-    const { roomId, userId } = createCanvas;
+    const { roomId, userId, pageId } = createCanvas;
     const canvas = await this.canvasRepository.save({
       roomId,
       room: {
         id: roomId,
       },
     });
-    this.socketEventGateway.newWhiteboard(roomId, canvas.id, userId);
+    this.socketEventGateway.newWhiteboard(roomId, canvas.id, userId, pageId);
     return {
       pageId: canvas.id,
       roomId,

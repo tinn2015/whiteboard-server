@@ -9,4 +9,6 @@ export class CreateCanvasDto {
   @IsNotEmpty({ message: 'userId 不能为空' })
   @IsString()
   readonly userId: string;
+  @IsString()
+  readonly pageId: string;
 }
