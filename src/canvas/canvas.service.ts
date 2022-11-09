@@ -218,6 +218,17 @@ export class CanvasService {
       const fabricObjects = await this.fabricObjectRepository.find({
         pageId: data.pid,
       });
+      console.log('====fabricobjects====', fabricObjects);
+      fabricObjects.forEach((fabricObj: any) => {
+        if (fabricObj.object.qn.t === 'path') {
+          restorePath(
+            fabricObj.id,
+            fabricObj.object.path.map((i) => {
+              return { path: i };
+            }),
+          );
+        }
+      });
       this.logger.log(
         'info',
         `roomId: ${roomId} remove, objects: ${fabricObjects.map(
