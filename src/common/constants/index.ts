@@ -4,11 +4,20 @@ export const CMD_CLEAR = 'clear';
 // cmd 删除object
 export const CMD_REMOVE = 'remove';
 
-// cmd 修改背景色
-export const CMD_BGCOLOR = 'bgColor';
+// cmd 修改背景
+export const CMD_BG = 'bg';
 
-// cmd 修改背景图片
-export const CMD_BGIMG = 'bgImg';
+// cmd 是否有网格
+export const CMD_GRID = 'grid';
+
+// 前一页
+export const PRE_PAGE = 'pre';
+
+// 下一页
+export const NEXT_PAGE = 'next';
+
+// 下一页
+export const CHANGE_PAGE = 'cPage';
 
 // 选中
 export const DRAW_ACTIVE_SELECTION = 'as';

@@ -21,11 +21,20 @@ export class Room {
   @OneToMany(() => Canvas, (canvas) => canvas.room)
   canvas: Canvas[];
 
+  @Column({ default: true })
+  isGrid: boolean;
+
+  @Column({ default: 'http://172.25.9.11:3000/wbassets/dark.png' })
+  background: string;
+
   @Column({ default: 0 })
   maxOnlineUser: number;
 
   @Column('enum', { enum: ['living', 'closed'], default: 'living' })
   status: string;
+
+  @Column({ default: 0 })
+  currentPage: number;
 
   @OneToMany(() => Users, (user) => user.room)
   users: Users[];

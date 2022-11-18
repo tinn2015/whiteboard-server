@@ -37,15 +37,26 @@ $ npm run test:cov
 ```
 
 ## docker
+
 ```bash
-docker run -d -p 8090:3000 -p 80:80 -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
+docker run -d -p 8090:3000 -p 80:80 -e RUNNINg_ENV=production -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
+```
+
+## docker
+```bash
+// dev
+docker run -d -p 9000:3000 -p 3030:80 -e RUNNINg_ENV=development -v /home/nginx/html/dev:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
 ```
 
 ## postgres
 ```bash
 
+// local
+docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /c/Users/douqiting01/Desktop/workspace/code/white-board/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432  postgres
+
 // dev
-docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /c/Users/douqiting01/Desktop/workspace/code/white-board/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432 --restart=always postgres
+docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata-dev:/var/lib/postgresql/data/pgdata -p 5433:5432 --restart=always postgres
+```
 
 // production
 docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432 --restart=always postgres

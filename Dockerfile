@@ -2,6 +2,8 @@ FROM node:16
 LABEL AUTHOR="douqiting"
 EXPOSE 3000/tcp
 EXPOSE 80/tcp
+ENV RUNNING_ENV=production
+RUN echo "RUNNING_ENV: ${RUNNING_ENV}"
 ENV NODE_ENV production
 ENV workpath=/home
 WORKDIR ${workpath}
@@ -17,7 +19,8 @@ RUN yarn install --no-cache
 # RUN cnpm i canvas --no-cache
 RUN yarn build
 VOLUME [ "/home/whiteboard-web", "/home/server-logs" ]
-CMD [ "node", "dist/main.js" ]
+# CMD ["npm", "run", "build:prod:${running_env}"]
+CMD npm run start:prod:${RUNNING_ENV}
 
 # FROM node:16
 # LABEL AUTHOR="douqiting"

@@ -5,5 +5,5 @@ export default {
   DATABASE_PORT: 5433,
   // DATABASE_HOST: 'localhost',
   DATABASE_HOST: '172.25.9.11',
-  DATABASE_SYNC: false,
+  DATABASE_SYNC: true,
 };

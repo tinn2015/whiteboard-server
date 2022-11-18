@@ -7,6 +7,7 @@ import { Canvas } from '../entities/canvas.entity';
 import { CanvasService } from '../canvas/canvas.service';
 import { UsersService } from '../users/users.service';
 import { DeleteRoomDto } from './dto/delete-room.dto';
+import { UpdateCurrentPageDto } from './dto/update-page.dto';
 
 // import { Room } from './interfaces/rooms.interface'
 
@@ -30,7 +31,7 @@ export class RoomsService {
     console.log('getRoom', id);
     return this.roomRepository.findOne(
       { id },
-      { relations: ['users', 'canvas'] },
+      { relations: ['canvas', 'canvas.objects'] },
     );
   }
 
@@ -103,5 +104,18 @@ export class RoomsService {
         };
       }
     }
+  }
+
+  async updateCurrentPage(updateCurrentPageDto: UpdateCurrentPageDto) {
+    console.log('updateCurrentPageDto', updateCurrentPageDto);
+    const room = await this.roomRepository.findOne({
+      id: updateCurrentPageDto.roomId,
+    });
+    room.currentPage = updateCurrentPageDto.pageId;
+    await this.roomRepository.save(room);
+    return {
+      code: 1,
+      msg: '更新成功',
+    };
   }
 }

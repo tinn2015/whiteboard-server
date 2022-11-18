@@ -10,6 +10,7 @@ import {
 import { RoomsService } from './rooms.service';
 import { GetRoomDto } from './dto/get-room.dto';
 import { DeleteRoomDto } from './dto/delete-room.dto';
+import { UpdateCurrentPageDto } from './dto/update-page.dto';
 
 @Controller('rooms')
 export class RoomsController {
@@ -23,6 +24,11 @@ export class RoomsController {
   @Get(':id')
   getRoom(@Param('id') id: string) {
     return this.roomsService.getRoom(id);
+  }
+
+  @Post('/updateCurrentPage')
+  updateCurrentPage(@Body() updateCurrentPageDto: UpdateCurrentPageDto) {
+    return this.roomsService.updateCurrentPage(updateCurrentPageDto);
   }
 
   @Delete()

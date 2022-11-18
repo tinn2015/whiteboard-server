@@ -8,6 +8,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, getConnection } from 'typeorm';
 import { EventGateway } from '../sokcet/events.gateway';
+import { RoomsService } from '../rooms/rooms.service';
+import { Room } from '../entities/room.entity';
 import { Canvas } from '../entities/canvas.entity';
 import { FabricObject } from '../entities/fabricObject.entity';
 import { storepaths, genObject, restorePath } from './drawUtils';
@@ -31,12 +33,15 @@ export class CanvasService {
   private staticCanvas: any;
   private canvasWidth = 1000;
   constructor(
+    @InjectRepository(Room) private roomRepository: Repository<Room>,
     @InjectRepository(Canvas) private canvasRepository: Repository<Canvas>,
     @InjectRepository(FabricObject)
     private fabricObjectRepository: Repository<FabricObject>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     @Inject(forwardRef(() => EventGateway))
     private readonly socketEventGateway: EventGateway,
+    @Inject(forwardRef(() => RoomsService))
+    private readonly roomsService: RoomsService,
   ) {
     // this.staticCanvas = new fabric.StaticCanvas(null, {
     //   width: 2000,
@@ -150,11 +155,20 @@ export class CanvasService {
       case CONTANTS.CMD_REMOVE:
         this._cmdRemove(roomId, data);
         break;
-      case CONTANTS.CMD_BGCOLOR:
-        this._setBackgroundColor(roomId, data);
+      case CONTANTS.CMD_BG:
+        this._setBackground(roomId, data);
         break;
-      case CONTANTS.CMD_BGIMG:
-        this._setBackgroundImage(roomId, data);
+      case CONTANTS.CMD_GRID:
+        this._setGrid(roomId, data);
+        break;
+      case CONTANTS.PRE_PAGE:
+        this._setCurrentPage(roomId, data);
+        break;
+      case CONTANTS.NEXT_PAGE:
+        this._setCurrentPage(roomId, data);
+        break;
+      case CONTANTS.CHANGE_PAGE:
+        this._setCurrentPage(roomId, data);
         break;
       default:
         this.logger.error('未匹配得cmd', data);
@@ -192,7 +206,7 @@ export class CanvasService {
       };
     }
     this.logger.log('info', `获取历史画布 roomId:${roomId} pageId: ${pageId}`);
-    const { objects, cProps } = canvas;
+    const { objects } = canvas;
     const objs = [];
     Object.keys(objects).forEach((key: string) => {
       const obj = objects[key];
@@ -201,8 +215,7 @@ export class CanvasService {
     });
     return {
       version: '5.2.0',
-      background: cProps.background,
-      backgroundImage: cProps.backgroundImage,
+      background: 'transparent',
       objects: objs,
     };
   }
@@ -292,37 +305,29 @@ export class CanvasService {
    * @param roomId
    * @param data
    */
-  async _setBackgroundColor(roomId: string, data) {
+  async _setBackground(roomId: string, data) {
     try {
-      const canvasEntity = await this.canvasRepository.findOne({
-        id: data.pid,
+      const roomEntity = await this.roomRepository.findOne({
+        id: roomId,
       });
-      canvasEntity.cProps.background = data.color;
-      this.canvasRepository.save(canvasEntity);
+      roomEntity.background = data.bg;
+      this.roomRepository.save(roomEntity);
       this.logger.log('info', `room: ${roomId} 背景修改成功`, data);
     } catch (err) {
-      this.logger.error(`room: ${roomId} 修改背景色失败`, data);
+      this.logger.error(`room: ${roomId} 修改背景失败`, data);
     }
   }
 
-  /**
-   * 修改背景图片
-   * @param roomId
-   * @param data
-   */
-  async _setBackgroundImage(roomId: string, data) {
+  async _setGrid(roomId: string, data) {
     try {
-      const canvasEntity = await this.canvasRepository.findOne({
-        id: data.pid,
+      const roomEntity = await this.roomRepository.findOne({
+        id: roomId,
       });
-      canvasEntity.cProps.backgroundImage = data.url;
-      if (data.color) {
-        canvasEntity.cProps.background = data.color;
-      }
-      this.canvasRepository.save(canvasEntity);
-      this.logger.log('info', `room: ${roomId} 背景图片修改成功`, data);
+      roomEntity.isGrid = data.isGrid;
+      this.roomRepository.save(roomEntity);
+      this.logger.log('info', `room: ${roomId} 网格修改成功`, data);
     } catch (err) {
-      this.logger.error(`room: ${roomId} 修改背景图片失败`, data);
+      this.logger.error(`room: ${roomId} 修改网格失败`, data);
     }
   }
 
@@ -332,14 +337,17 @@ export class CanvasService {
    */
   async createCanvas(createCanvas: CreateCanvasDto) {
     console.log('createCanvas', createCanvas);
-    const { roomId, userId, pageId } = createCanvas;
+    const { roomId, userId } = createCanvas;
     const canvas = await this.canvasRepository.save({
       roomId,
       room: {
         id: roomId,
       },
     });
-    this.socketEventGateway.newWhiteboard(roomId, canvas.id, userId, pageId);
+    // 新建页面后，current为当前创建页
+    this.roomsService.updateCurrentPage({ roomId, pageId: canvas.id });
+    // 新建画布，广播到room中成员
+    this.socketEventGateway.newWhiteboard(roomId, canvas.id, userId);
     return {
       pageId: canvas.id,
       roomId,
@@ -352,22 +360,31 @@ export class CanvasService {
    * @returns
    */
   async deleteCanvas(deleteCanvasDto: DeleteCanvasDto) {
-    const { roomId, pageId } = deleteCanvasDto;
+    const { roomId, pageId, userId } = deleteCanvasDto;
     const canvas = await this.canvasRepository.findOne({
       id: +pageId,
     });
     const fabricObjects = await this.fabricObjectRepository.find({
       pageId: +pageId,
     });
-    await this.fabricObjectRepository.remove(fabricObjects);
-    await this.canvasRepository.remove(canvas);
-    this.logger.log(
-      'info',
-      `delete canvas pageId: ${pageId} success, roomId:${roomId}`,
-    );
-    return {
-      message: 'delete success',
-    };
+    if (canvas) {
+      await this.fabricObjectRepository.remove(fabricObjects);
+      await this.canvasRepository.remove(canvas);
+      // 新建画布，广播到room中成员
+      this.socketEventGateway.removeWhiteboard(roomId, pageId, userId);
+      this.logger.log(
+        'info',
+        `delete canvas pageId: ${pageId} success, roomId:${roomId}`,
+      );
+      return {
+        message: 'delete success',
+      };
+    } else {
+      this.logger.log(
+        'error',
+        `can't find canvas pageId: ${pageId}, roomId:${roomId}`,
+      );
+    }
   }
 
   async batchDeleteCanvas(ids: number[], roomId: string) {
@@ -385,5 +402,13 @@ export class CanvasService {
       'info',
       `batch delete canvas ids: ${ids} success, room: ${roomId}`,
     );
+  }
+
+  async _setCurrentPage(roomId: string, data) {
+    this.roomsService.updateCurrentPage({ roomId, pageId: data.pid });
+  }
+
+  async _setDeletePage(roomId: string, data) {
+    this.deleteCanvas({ roomId, pageId: data.pid, userId: data.userId });
   }
 }

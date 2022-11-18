@@ -15,7 +15,7 @@ import 'winston-daily-rotate-file';
 import * as winston from 'winston';
 import envConfig from './common/config';
 import * as Joi from '@hapi/joi';
-
+console.log('====envConfig====', envConfig());
 @Module({
   imports: [
     // 环境配置

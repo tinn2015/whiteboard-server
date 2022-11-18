@@ -28,13 +28,13 @@ export class Canvas {
   })
   room: Room;
 
-  @Column('json', {
-    default: {
-      background: '#282535',
-      backgroundImage: '/images/background/x2/dark.png',
-    },
-  })
-  cProps: { background: string; backgroundImage: null | string };
+  // @Column('json', {
+  //   default: {
+  //     background: '#282535',
+  //     backgroundImage: 'http://172.25.9.11:3000/wbassets/dark.png',
+  //   },
+  // })
+  // cProps: { background: string; backgroundImage: null | string };
 
   @OneToMany(() => FabricObject, (fabricObject) => fabricObject.canvas)
   objects: object;
