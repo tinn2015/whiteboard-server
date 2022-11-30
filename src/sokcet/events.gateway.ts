@@ -27,6 +27,8 @@ const io = new Server();
   cors: {
     origin: '*',
   },
+  pingInterval: 5000,
+  pingTimeout: 5000,
   perMessageDeflate: {
     threshold: 1, // defaults to 1024
 
@@ -89,7 +91,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     setTimeout(async () => {
       console.log('socket', client.nsp.sockets.size);
       const user = await this.userRepository.findOne({ socket });
-      if (user.status === 'offline') {
+      if (user && user.status === 'offline') {
         await this.userRepository.remove(user);
         const room = await this.roomRepository.findOne(
           { id: user.roomId },

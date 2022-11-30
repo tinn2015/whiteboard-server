@@ -185,7 +185,26 @@ export class CanvasService {
       const fabricObjects = await this.fabricObjectRepository.findByIds(
         objectIds,
       );
-      await this.fabricObjectRepository.remove(fabricObjects);
+      this.logger.log(
+        'info',
+        `room: ${roomId} 修改前的对象 fabricObjects`,
+        fabricObjects,
+      );
+      fabricObjects.forEach((fabricObj) => {
+        const modifiedItem = mos[fabricObj.id];
+        const modifiedKeys = Object.keys(modifiedItem);
+        if (modifiedKeys.length) {
+          modifiedKeys.forEach((key) => {
+            fabricObj.object[key] = modifiedItem[key];
+          });
+        }
+      });
+      this.logger.log(
+        'info',
+        `room: ${roomId} 修改后的对象 fabricObjects`,
+        fabricObjects,
+      );
+      await this.fabricObjectRepository.save(fabricObjects);
     } catch (error) {
       this.logger.error(`room: ${roomId} 批量更新object失败`, { data, error });
     }
