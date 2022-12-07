@@ -40,6 +40,7 @@ console.log('====envConfig====', envConfig());
         database: configService.get('DATABASE_NAME'),
         autoLoadEntities: true,
         synchronize: configService.get('DATABASE_SYNC'), // orm 每次都会同步到数据库。 生产环境禁用
+        logging: configService.get('DATABASE_LOGGING'),
       }),
       inject: [ConfigService],
     }),

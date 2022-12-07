@@ -7,6 +7,9 @@ export const CMD_REMOVE = 'remove';
 // cmd 修改背景
 export const CMD_BG = 'bg';
 
+// cmd 删除被store的path
+export const CMD_RS = 'rs';
+
 // cmd 是否有网格
 export const CMD_GRID = 'grid';
 

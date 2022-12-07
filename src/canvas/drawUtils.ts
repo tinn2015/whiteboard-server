@@ -65,3 +65,11 @@ export function storepaths(data) {
 export function restorePath(oid: string, path: any[]) {
   freePaths.set(oid, path);
 }
+
+export function removeStorePath(oids) {
+  if (oids && oids.length) {
+    oids.forEach((oid) => {
+      freePaths.delete(oid);
+    });
+  }
+}

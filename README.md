@@ -39,13 +39,13 @@ $ npm run test:cov
 ## docker
 
 ```bash
-docker run -d -p 8090:3000 -p 80:80 -e RUNNINg_ENV=production -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
+docker run -d -p 8090:3000 -p 80:80 -e RUNNING_ENV=production -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
 ```
 
 ## docker
 ```bash
 // dev
-docker run -d -p 9000:3000 -p 3030:80 -e RUNNINg_ENV=development -v /home/nginx/html/dev:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
+docker run -d -p 9000:3000 -p 3030:80 -e RUNNING_ENV=development -v /home/nginx/html/dev:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
 ```
 
 ## postgres

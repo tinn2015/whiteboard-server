@@ -12,7 +12,12 @@ import { RoomsService } from '../rooms/rooms.service';
 import { Room } from '../entities/room.entity';
 import { Canvas } from '../entities/canvas.entity';
 import { FabricObject } from '../entities/fabricObject.entity';
-import { storepaths, genObject, restorePath } from './drawUtils';
+import {
+  storepaths,
+  genObject,
+  restorePath,
+  removeStorePath,
+} from './drawUtils';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ModifiedObjects } from '../typing';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
@@ -155,6 +160,9 @@ export class CanvasService {
       case CONTANTS.CMD_REMOVE:
         this._cmdRemove(roomId, data);
         break;
+      case CONTANTS.CMD_RS:
+        this._cmdRemoveStorePath(roomId, data);
+        break;
       case CONTANTS.CMD_BG:
         this._setBackground(roomId, data);
         break;
@@ -229,7 +237,6 @@ export class CanvasService {
     const objs = [];
     Object.keys(objects).forEach((key: string) => {
       const obj = objects[key];
-      console.log('历史画布数据', obj);
       objs.push(obj.object);
     });
     return {
@@ -282,15 +289,20 @@ export class CanvasService {
   async _cmdRemove(roomId: string, data) {
     console.log(roomId, data);
     const { oid } = data.qn;
-    const queryRunner = getConnection().createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    // const queryRunner = getConnection().createQueryRunner();
+    // await queryRunner.connect();
+    // await queryRunner.startTransaction();
     try {
       const object = await this.fabricObjectRepository.findOne({
+        // id: 'asa121212',
         id: oid,
       });
+      if (!object) {
+        this.logger.log('info', `不存在得画笔oid:${oid}`, object);
+        return;
+      }
       // 保存path, undo/redo
-      if (object.object.qn.t === 'path') {
+      if (object && object.object.qn.t === 'path') {
         restorePath(
           oid,
           object.object.path.map((i) => {
@@ -298,17 +310,17 @@ export class CanvasService {
           }),
         );
       }
-      await queryRunner.manager.remove(object);
+      await this.fabricObjectRepository.remove(object);
 
-      await queryRunner.commitTransaction();
       this.logger.log('info', `删除画笔 ${oid}`, data);
+      // await queryRunner.commitTransaction();
     } catch (err) {
       // since we have errors lets rollback the changes we made
-      await queryRunner.rollbackTransaction();
+      // await queryRunner.rollbackTransaction();
       this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
     } finally {
       // you need to release a queryRunner which was manually instantiated
-      await queryRunner.release();
+      // await queryRunner.release();
     }
     // try {
     //   const objEntity = await this.fabricObjectRepository.findOne({ id: oid });
@@ -317,6 +329,16 @@ export class CanvasService {
     // } catch (err) {
     //   this.logger.error(`room: ${roomId} 删除画笔失败`, data);
     // }
+  }
+
+  /**
+   * 删除store中的path
+   * @param roomId
+   * @param data
+   */
+  async _cmdRemoveStorePath(roomId: string, data) {
+    const { oids } = data;
+    removeStorePath(oids);
   }
 
   /**

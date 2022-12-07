@@ -6,4 +6,5 @@ export default {
   // DATABASE_HOST: 'localhost',
   DATABASE_HOST: '172.25.9.11',
   DATABASE_SYNC: false,
+  DATABASE_LOGGING: false,
 };
