@@ -1,8 +1,8 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Room } from '../entities/room.entity';
-import { Users } from '../entities/user.entity';
+import { Room } from '../../entities/room.entity';
+import { Users } from '../../entities/user.entity';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 // import { Room } from './interfaces/rooms.interface'

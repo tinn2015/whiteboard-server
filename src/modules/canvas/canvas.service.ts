@@ -9,21 +9,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, getConnection } from 'typeorm';
 import { EventGateway } from '../sokcet/events.gateway';
 import { RoomsService } from '../rooms/rooms.service';
-import { Room } from '../entities/room.entity';
-import { Canvas } from '../entities/canvas.entity';
-import { FabricObject } from '../entities/fabricObject.entity';
-import {
-  storepaths,
-  genObject,
-  restorePath,
-  removeStorePath,
-} from './drawUtils';
+import { PathService } from '../path/path.service';
+import { Room } from '../../entities/room.entity';
+import { Canvas } from '../../entities/canvas.entity';
+import { FabricObject } from '../../entities/fabricObject.entity';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { ModifiedObjects } from '../typing';
+import { ModifiedObjects } from '../../typing';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
 import { DeleteCanvasDto } from './dto/delete-canvas.dto';
-import * as CONTANTS from '../common/constants';
-import { threadId } from 'worker_threads';
+import * as CONTANTS from '../../common/constants';
 
 const actionMapProps = {
   drag: ['left', 'top'],
@@ -47,15 +41,8 @@ export class CanvasService {
     private readonly socketEventGateway: EventGateway,
     @Inject(forwardRef(() => RoomsService))
     private readonly roomsService: RoomsService,
-  ) {
-    // this.staticCanvas = new fabric.StaticCanvas(null, {
-    //   width: 2000,
-    //   height: 2000,
-    // });
-    // console.log('this.staticCanvas', this.staticCanvas);
-    // this.logger.log('info', 'this.staticCanvas init', { name: 'aaa' });
-    // console.warn(`app start listen on 3000`);
-  }
+    private readonly pathService: PathService,
+  ) {}
 
   /**
    * 对canvasJson 进行增加、修改
@@ -75,15 +62,22 @@ export class CanvasService {
 
     this.logger.log('info', '普通画笔数据', data);
 
-    // 缓存path
+    // 保存path轨迹
     if (qn.t === CONTANTS.DRAW_FREE_PATHS) {
-      storepaths(data);
+      const { qn, path, index } = data;
+      const pathobj = {
+        index,
+        pageId: qn.pid,
+        pathId: qn.oid,
+        pathPoint: path,
+      };
+      this.pathService.addPath(pathobj);
       return;
     }
 
     let fabricObj = null;
     try {
-      const { pid, oid } = qn;
+      const { oid } = qn;
       fabricObj = await this.fabricObjectRepository.findOne({
         id: oid,
       });
@@ -104,52 +98,45 @@ export class CanvasService {
         props.forEach((key: string) => {
           fabricObj.object[key] = data[key];
         });
-        console.log('fabricObj', fabricObj);
         await this.fabricObjectRepository.save(fabricObj);
-        this.logger.log('info', `更新已有画笔 ${qn.oid}`);
+        this.logger.log('info', `pageId: ${qn.pid}, 更新已有画笔 ${qn.oid}`);
       } else {
-        // 新建fabric对象
-        const _object = genObject(data);
-        await this.fabricObjectRepository.save({
-          id: qn.oid,
-          pageId: qn.pid,
-          object: _object,
-        });
-        this.logger.log('info', `替换已有画笔 ${qn.oid}`, _object);
-      }
-    } else {
-      const _object = genObject(data);
-      const queryRunner = getConnection().createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-      try {
-        const object = this.fabricObjectRepository.create({
-          id: qn.oid,
-          pageId: +qn.pid,
-          object: _object,
-          canvas: {
-            id: +qn.pid,
-          },
-        });
-        await queryRunner.manager.save(object);
-        await queryRunner.commitTransaction();
-        this.logger.log('info', `新建画笔 ${qn.oid}`, _object);
-      } catch (err) {
-        // since we have errors lets rollback the changes we made
-        await queryRunner.rollbackTransaction();
-        this.logger.error('db error fabricObjectRepository.save', {
+        this.logger.error(`pageId: ${qn.pid}, qn对象缺少action`, {
           pageId: +qn.pid,
           roomId,
           data,
-          error: err,
         });
-      } finally {
-        // you need to release a queryRunner which was manually instantiated
-        await queryRunner.release();
       }
+    } else {
+      this.fabricObjectRepository
+        .save({
+          id: qn.oid,
+          pageId: +qn.pid,
+          object: data,
+          type: qn.t,
+          canvas: {
+            id: +qn.pid,
+          },
+        })
+        .then(() => {
+          this.logger.log('info', `新建画笔 ${qn.oid}`, data);
+        })
+        .catch((err) => {
+          this.logger.error('db error fabricObjectRepository.save', {
+            pageId: +qn.pid,
+            roomId,
+            data,
+            error: err,
+          });
+        });
     }
   }
 
+  /**
+   * cmd消息处理
+   * @param roomId
+   * @param data
+   */
   async cmdHandle(roomId: string, data: any) {
     const { cmd } = data;
     this.logger.log('info', `收到cmd消息`, data);
@@ -188,7 +175,6 @@ export class CanvasService {
     this.logger.log('info', `room: ${roomId} 批量修改 objects`, data);
     const { at, mos } = data;
     const objectIds = Object.keys(mos);
-    console.log('modifiedObjects', objectIds);
     try {
       const fabricObjects = await this.fabricObjectRepository.findByIds(
         objectIds,
@@ -233,17 +219,55 @@ export class CanvasService {
       };
     }
     this.logger.log('info', `获取历史画布 roomId:${roomId} pageId: ${pageId}`);
+    console.log('canvas', canvas);
     const { objects } = canvas;
     const objs = [];
-    Object.keys(objects).forEach((key: string) => {
-      const obj = objects[key];
-      objs.push(obj.object);
-    });
+    const objKeys = Object.keys(objects);
+    for (let i = 0; i < objKeys.length; i++) {
+      const item = objects[objKeys[i]];
+      if (item.type === 'path') {
+        const pathObj = await this.pathService.getPath({
+          pathId: item.id,
+          pageId,
+        });
+        if (pathObj) {
+          item.object.paths = pathObj.pathPoints;
+        }
+      }
+      objs.push(item.object);
+    }
+    // Object.keys(objects).forEach((key: string) => {
+    //   const obj = objects[key];
+    //   objs.push(obj.object);
+    // });
     return {
       version: '5.2.0',
       background: 'transparent',
       objects: objs,
     };
+  }
+
+  async getCanvasByIds(pageIds: number[]) {
+    const canvas = await this.canvasRepository.findByIds(pageIds, {
+      relations: ['objects'],
+    });
+    for (let i = 0; i < canvas.length; i++) {
+      const { objects } = canvas[i];
+      for (let j = 0; j < objects.length; j++) {
+        const obj = JSON.parse(JSON.stringify(objects[j]));
+        if (obj.type === 'path') {
+          const paths = await this.pathService.getPath({
+            pathId: obj.id,
+            pageId: obj.pageId,
+          });
+          if (paths) {
+            obj.object.paths = paths.pathPoints;
+          }
+        }
+        objects[j] = obj;
+      }
+    }
+    return canvas;
   }
 
   /**
@@ -256,17 +280,6 @@ export class CanvasService {
     try {
       const fabricObjects = await this.fabricObjectRepository.find({
         pageId: data.pid,
-      });
-      console.log('====fabricobjects====', fabricObjects);
-      fabricObjects.forEach((fabricObj: any) => {
-        if (fabricObj.object.qn.t === 'path') {
-          restorePath(
-            fabricObj.id,
-            fabricObj.object.path.map((i) => {
-              return { path: i };
-            }),
-          );
-        }
       });
       this.logger.log(
         'info',
@@ -288,47 +301,26 @@ export class CanvasService {
    */
   async _cmdRemove(roomId: string, data) {
     console.log(roomId, data);
-    const { oid } = data.qn;
-    // const queryRunner = getConnection().createQueryRunner();
-    // await queryRunner.connect();
-    // await queryRunner.startTransaction();
+    const { pid, oid } = data.qn;
     try {
       const object = await this.fabricObjectRepository.findOne({
-        // id: 'asa121212',
         id: oid,
       });
       if (!object) {
-        this.logger.log('info', `不存在得画笔oid:${oid}`, object);
-        return;
-      }
-      // 保存path, undo/redo
-      if (object && object.object.qn.t === 'path') {
-        restorePath(
-          oid,
-          object.object.path.map((i) => {
-            return { path: i };
-          }),
+        this.logger.log(
+          'info',
+          `不存在的画笔 pageId: ${pid}, oid:${oid}`,
+          object,
         );
+        return;
       }
       await this.fabricObjectRepository.remove(object);
 
       this.logger.log('info', `删除画笔 ${oid}`, data);
-      // await queryRunner.commitTransaction();
     } catch (err) {
-      // since we have errors lets rollback the changes we made
-      // await queryRunner.rollbackTransaction();
       this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
     } finally {
-      // you need to release a queryRunner which was manually instantiated
-      // await queryRunner.release();
     }
-    // try {
-    //   const objEntity = await this.fabricObjectRepository.findOne({ id: oid });
-    //   await this.fabricObjectRepository.remove(objEntity);
-    //   this.logger.log('info', `room: ${roomId} 删除画笔成功`, data);
-    // } catch (err) {
-    //   this.logger.error(`room: ${roomId} 删除画笔失败`, data);
-    // }
   }
 
   /**
@@ -338,7 +330,8 @@ export class CanvasService {
    */
   async _cmdRemoveStorePath(roomId: string, data) {
     const { oids } = data;
-    removeStorePath(oids);
+    // 删除轨迹
+    this.pathService.removePath(oids);
   }
 
   /**
@@ -359,6 +352,11 @@ export class CanvasService {
     }
   }
 
+  /**
+   * 设置是否添加网格
+   * @param roomId
+   * @param data
+   */
   async _setGrid(roomId: string, data) {
     try {
       const roomEntity = await this.roomRepository.findOne({
@@ -409,6 +407,7 @@ export class CanvasService {
       pageId: +pageId,
     });
     if (canvas) {
+      await this.pathService.removePathsByPageId(+pageId);
       await this.fabricObjectRepository.remove(fabricObjects);
       await this.canvasRepository.remove(canvas);
       // 新建画布，广播到room中成员

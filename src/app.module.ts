@@ -1,12 +1,13 @@
 import { Module, Logger } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { RoomsModule } from './rooms/rooms.module';
-import { UsersModule } from './users/users.module';
-import { SokcetModule } from './sokcet/sokcet.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
+import { UsersModule } from './modules/users/users.module';
+import { SokcetModule } from './modules/sokcet/sokcet.module';
+import { PathModule } from './modules/path/path.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CanvasModule } from './canvas/canvas.module';
+import { CanvasModule } from './modules/canvas/canvas.module';
 import {
   WinstonModule,
   utilities as nestWinstonModuleUtilities,
@@ -79,6 +80,7 @@ console.log('====envConfig====', envConfig());
     UsersModule,
     SokcetModule,
     CanvasModule,
+    PathModule,
   ],
   controllers: [AppController],
   providers: [AppService, Logger],

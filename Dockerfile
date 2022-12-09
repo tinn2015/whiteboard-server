@@ -11,19 +11,19 @@ RUN echo node -v
 COPY . ${workpath}
 # RUN rm -rf node_modules
 # 设置apt镜像
-RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
-sed -i s@/deb.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
-sed -i s@/security.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
-apt-get clean && \
-apt-get update
+# RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
+# sed -i s@/deb.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
+# sed -i s@/security.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
+# apt-get clean && \
+# apt-get update
 
-RUN apt-get install -qq build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+# RUN apt-get install -qq build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 # RUN npm i cnpm -g
 # RUN npm i pm2 -g
 COPY package.json ${workpath}
 COPY yarn.lock ${workpath}
 RUN yarn config set registry https://registry.npm.taobao.org/
-RUN yarn install --no-cache
+RUN yarn install
 # RUN cnpm i canvas --no-cache
 RUN yarn build
 VOLUME [ "/home/whiteboard-web", "/home/server-logs" ]

@@ -1,9 +1,9 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Room } from '../entities/room.entity';
-import { Users } from '../entities/user.entity';
-import { Canvas } from '../entities/canvas.entity';
+import { Room } from '../../entities/room.entity';
+import { Users } from '../../entities/user.entity';
+import { Canvas } from '../../entities/canvas.entity';
 import { CanvasService } from '../canvas/canvas.service';
 import { UsersService } from '../users/users.service';
 import { DeleteRoomDto } from './dto/delete-room.dto';
@@ -27,12 +27,21 @@ export class RoomsService {
     return this.roomRepository.find({ relations: ['users', 'canvas'] });
   }
 
-  getRoom(id: string) {
+  async getRoom(id: string) {
     console.log('getRoom', id);
-    return this.roomRepository.findOne(
+    const roomInfo = await this.roomRepository.findOne(
       { id },
-      { relations: ['canvas', 'canvas.objects'] },
+      { relations: ['canvas'] },
     );
+    const pageIds = roomInfo.canvas.map((i) => i.id);
+    const canvas = await this.canvasService.getCanvasByIds(pageIds);
+    console.log('getRoom', canvas);
+    roomInfo.canvas = canvas;
+    return roomInfo;
+    // const {canvas} = roomInfo
+    // for (let i =0; i < canvas.length; i++) {
+
+    // }
   }
 
   checkRoomStatus() {
@@ -44,7 +53,6 @@ export class RoomsService {
   }
 
   joinRoom(roomId: string, socketId: string, userId: number) {
-    console.log(this.rooms, roomId);
     const userList = this.rooms.get(roomId);
     if (!userList || !userList.length) {
       this.rooms.set(roomId, [{ socketId, userId }]);
@@ -76,7 +84,6 @@ export class RoomsService {
           relations: ['users', 'canvas'],
         },
       );
-      console.log(room);
       if (room) {
         // 关联删除user
         const userIds = room.users.map((i) => {
@@ -107,7 +114,6 @@ export class RoomsService {
   }
 
   async updateCurrentPage(updateCurrentPageDto: UpdateCurrentPageDto) {
-    console.log('updateCurrentPageDto', updateCurrentPageDto);
     const room = await this.roomRepository.findOne({
       id: updateCurrentPageDto.roomId,
     });

@@ -14,9 +14,9 @@ import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { CanvasService } from '../canvas/canvas.service';
-import { Users } from '../entities/user.entity';
-import { Room } from '../entities/room.entity';
-import { Canvas } from '../entities/canvas.entity';
+import { Users } from '../../entities/user.entity';
+import { Room } from '../../entities/room.entity';
+import { Canvas } from '../../entities/canvas.entity';
 import { decode, encode } from '@msgpack/msgpack';
 import Piscina = require('piscina');
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -60,7 +60,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
     this.pool = new Piscina({
-      filename: path.resolve(__dirname, '../utils/worker-threads.js'),
+      filename: path.resolve(__dirname, '../../utils/worker-threads.js'),
     });
 
     console.log('process.env', process.env.NODE_ENV);

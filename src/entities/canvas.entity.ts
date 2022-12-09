@@ -37,7 +37,7 @@ export class Canvas {
   // cProps: { background: string; backgroundImage: null | string };
 
   @OneToMany(() => FabricObject, (fabricObject) => fabricObject.canvas)
-  objects: object;
+  objects: FabricObject[];
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

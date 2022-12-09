@@ -2,32 +2,23 @@ import {
   Entity,
   Column,
   PrimaryColumn,
-  PrimaryGeneratedColumn,
-  Index,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
+  PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
-import { Canvas } from './canvas.entity';
 
 @Entity()
-export class FabricObject {
-  @PrimaryColumn()
-  id: string;
+export class Path {
+  @Index()
+  @PrimaryColumn({})
+  pathId: string;
 
-  @Column()
+  @Column({ unique: false })
   pageId: number;
 
-  @Column()
-  type: string;
-
   @Column('json')
-  object: any;
-
-  @ManyToOne(() => Canvas, (canvas) => canvas.objects, {
-    cascade: true,
-  })
-  canvas: object;
+  pathPoints: any;
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

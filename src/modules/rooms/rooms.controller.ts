@@ -1,14 +1,5 @@
-import {
-  Controller,
-  Get,
-  Query,
-  Post,
-  Param,
-  Delete,
-  Body,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Delete, Body } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
-import { GetRoomDto } from './dto/get-room.dto';
 import { DeleteRoomDto } from './dto/delete-room.dto';
 import { UpdateCurrentPageDto } from './dto/update-page.dto';
 

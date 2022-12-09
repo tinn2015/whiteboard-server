@@ -1,6 +1,6 @@
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import { decode } from '@msgpack/msgpack';
-import fabric = require('fabric');
+// import fabric = require('fabric');
 
 // const canvas = new fabric.StaticCanvas(null, { width: 200, height: 200 });
 
