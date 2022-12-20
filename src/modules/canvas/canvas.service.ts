@@ -156,6 +156,12 @@ export class CanvasService {
       case CONTANTS.CMD_GRID:
         this._setGrid(roomId, data);
         break;
+      case CONTANTS.CMD_REMOVE_ERASER:
+        this._removeEraser(roomId, data);
+        break;
+      case CONTANTS.CMD_ADD_ERASER:
+        this._addEraser(roomId, data);
+        break;
       case CONTANTS.PRE_PAGE:
         this._setCurrentPage(roomId, data);
         break;
@@ -225,7 +231,7 @@ export class CanvasService {
     const objKeys = Object.keys(objects);
     for (let i = 0; i < objKeys.length; i++) {
       const item = objects[objKeys[i]];
-      if (item.type === 'path') {
+      if (item.type === 'path' || item.type === 'eraser') {
         const pathObj = await this.pathService.getPath({
           pathId: item.id,
           pageId,
@@ -255,7 +261,7 @@ export class CanvasService {
       const { objects } = canvas[i];
       for (let j = 0; j < objects.length; j++) {
         const obj = JSON.parse(JSON.stringify(objects[j]));
-        if (obj.type === 'path') {
+        if (obj.type === 'path' || obj.type === 'eraser') {
           const paths = await this.pathService.getPath({
             pathId: obj.id,
             pageId: obj.pageId,
@@ -324,7 +330,7 @@ export class CanvasService {
   }
 
   /**
-   * 删除store中的path
+   * 删除path轨迹
    * @param roomId
    * @param data
    */
@@ -368,6 +374,53 @@ export class CanvasService {
     } catch (err) {
       this.logger.error(`room: ${roomId} 修改网格失败`, data);
     }
+  }
+
+  async _removeEraser(roomId: string, data) {
+    console.log('_removeEraser', `roomId: ${roomId}`, data);
+    const { epid, pid } = data;
+    const object = await this.fabricObjectRepository.findOne({
+      id: epid,
+    });
+    if (!object) {
+      this.logger.log(
+        'info',
+        `不存在的画笔 pageId: ${pid}, oid:${epid}`,
+        object,
+      );
+      return;
+    }
+    await this.fabricObjectRepository.remove(object);
+
+    this.logger.log('info', `删除橡皮擦 ${epid}`, data);
+  }
+
+  _addEraser(roomId: string, data) {
+    console.log('_addEraser', `roomId: ${roomId}`, data);
+    const { qn } = data.options;
+    const { pid } = data;
+    qn.t = 'eraser';
+    this.fabricObjectRepository
+      .save({
+        id: qn.oid,
+        pageId: +pid,
+        object: data,
+        type: qn.t,
+        canvas: {
+          id: +pid,
+        },
+      })
+      .then(() => {
+        this.logger.log('info', `新建橡皮擦 ${qn.oid}`, data);
+      })
+      .catch((err) => {
+        this.logger.error('新建橡皮擦：db error fabricObjectRepository.save', {
+          pageId: pid,
+          roomId,
+          data,
+          error: err,
+        });
+      });
   }
 
   /**

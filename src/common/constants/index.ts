@@ -13,6 +13,12 @@ export const CMD_RS = 'rs';
 // cmd 是否有网格
 export const CMD_GRID = 'grid';
 
+// cmd 删除橡皮擦
+export const CMD_REMOVE_ERASER = 're';
+
+// 添加橡皮擦轨迹
+export const CMD_ADD_ERASER = 'ae';
+
 // 前一页
 export const PRE_PAGE = 'pre';
 
