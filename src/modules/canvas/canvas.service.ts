@@ -60,8 +60,6 @@ export class CanvasService {
     )
       return;
 
-    this.logger.log('info', '普通画笔数据', data);
-
     // 保存path轨迹
     if (qn.t === CONTANTS.DRAW_FREE_PATHS) {
       const { qn, path, index } = data;
@@ -74,6 +72,8 @@ export class CanvasService {
       this.pathService.addPath(pathobj);
       return;
     }
+
+    this.logger.log('info', '普通画笔数据', data);
 
     let fabricObj = null;
     try {
@@ -122,7 +122,7 @@ export class CanvasService {
           this.logger.log('info', `新建画笔 ${qn.oid}`, data);
         })
         .catch((err) => {
-          this.logger.error('db error fabricObjectRepository.save', {
+          this.logger.error('[新建画笔]db error fabricObjectRepository.save', {
             pageId: +qn.pid,
             roomId,
             data,
@@ -144,11 +144,14 @@ export class CanvasService {
       case CONTANTS.CMD_CLEAR:
         this._cmdClear(roomId, data);
         break;
+      case CONTANTS.CMD_RECOVERY_CLEARED:
+        this._cmdRecoveryClear(roomId, data);
+        break;
       case CONTANTS.CMD_REMOVE:
         this._cmdRemove(roomId, data);
         break;
       case CONTANTS.CMD_RS:
-        this._cmdRemoveStorePath(roomId, data);
+        this._cmdRemoveStore(roomId, data);
         break;
       case CONTANTS.CMD_BG:
         this._setBackground(roomId, data);
@@ -225,19 +228,25 @@ export class CanvasService {
       };
     }
     this.logger.log('info', `获取历史画布 roomId:${roomId} pageId: ${pageId}`);
-    console.log('canvas', canvas);
     const { objects } = canvas;
     const objs = [];
     const objKeys = Object.keys(objects);
     for (let i = 0; i < objKeys.length; i++) {
       const item = objects[objKeys[i]];
+      if (item.isCleared) continue;
       if (item.type === 'path' || item.type === 'eraser') {
-        const pathObj = await this.pathService.getPath({
+        const pathPoints = await this.pathService.getPath({
           pathId: item.id,
           pageId,
         });
-        if (pathObj) {
-          item.object.paths = pathObj.pathPoints;
+        if (pathPoints.length) {
+          const path = pathPoints.map((item) => {
+            return {
+              point: item.point,
+              index: item.index,
+            };
+          });
+          item.object.path = path;
         }
       }
       objs.push(item.object);
@@ -259,19 +268,29 @@ export class CanvasService {
     });
     for (let i = 0; i < canvas.length; i++) {
       const { objects } = canvas[i];
+      const filterObjects = [];
       for (let j = 0; j < objects.length; j++) {
         const obj = JSON.parse(JSON.stringify(objects[j]));
+        if (obj.isCleared) continue;
         if (obj.type === 'path' || obj.type === 'eraser') {
-          const paths = await this.pathService.getPath({
+          const pathPoints = await this.pathService.getPath({
             pathId: obj.id,
             pageId: obj.pageId,
           });
-          if (paths) {
-            obj.object.paths = paths.pathPoints;
+          if (pathPoints.length) {
+            const path = pathPoints.map((item) => {
+              return {
+                point: item.point,
+                index: item.index,
+              };
+            });
+            obj.object.path = path;
           }
         }
-        objects[j] = obj;
+        // objects[j] = obj;
+        filterObjects.push(obj);
       }
+      canvas[i].objects = filterObjects;
     }
     return canvas;
   }
@@ -284,20 +303,42 @@ export class CanvasService {
    */
   async _cmdClear(roomId: string, data) {
     try {
-      const fabricObjects = await this.fabricObjectRepository.find({
-        pageId: data.pid,
-      });
+      const { oids: cleaarObjectIds } = data;
+      const fabricObjects = await this.fabricObjectRepository.findByIds(
+        cleaarObjectIds,
+      );
       this.logger.log(
         'info',
-        `roomId: ${roomId} remove, objects: ${fabricObjects.map(
+        `[cmd clear]roomId: ${roomId} remove, objects: ${fabricObjects.map(
           (i) => i.object.qn.oid,
         )}`,
       );
-      await this.fabricObjectRepository.remove(fabricObjects);
-      this.logger.log('info', `清除画布成功， userId: ${data.uid}`);
+      fabricObjects.forEach((obj) => {
+        obj.isCleared = true;
+      });
+      await this.fabricObjectRepository.save(fabricObjects);
+      this.logger.log(
+        'info',
+        `清除画布成功， userId: ${data.uid}, objectIds: ${data.oids}`,
+      );
     } catch (error) {
       this.logger.error('db error, cmd clear', { roomId, error });
     }
+  }
+
+  async _cmdRecoveryClear(roomId: string, data) {
+    const { oids: cleaarObjectIds } = data;
+    const fabricObjects = await this.fabricObjectRepository.findByIds(
+      cleaarObjectIds,
+    );
+    fabricObjects.forEach((obj) => {
+      obj.isCleared = false;
+    });
+    await this.fabricObjectRepository.save(fabricObjects);
+    this.logger.log(
+      'info',
+      `恢复被清除的数据， userId: ${data.uid}, objectIds: ${data.oids}`,
+    );
   }
 
   /**
@@ -330,14 +371,25 @@ export class CanvasService {
   }
 
   /**
-   * 删除path轨迹
+   * 删除store得对象轨迹
    * @param roomId
    * @param data
    */
-  async _cmdRemoveStorePath(roomId: string, data) {
-    const { oids } = data;
+  async _cmdRemoveStore(roomId: string, data) {
+    const { oids, pid } = data;
+    // 删除对象
+    const objects = await this.fabricObjectRepository.findByIds(oids);
+    const pathIds = objects
+      .filter((obj) => {
+        if (obj.type === 'path') {
+          return true;
+        }
+        return false;
+      })
+      .map((obj) => obj.id);
     // 删除轨迹
-    this.pathService.removePath(oids);
+    this.pathService.removePath(pathIds, pid);
+    this.fabricObjectRepository.remove(objects);
   }
 
   /**
@@ -477,6 +529,9 @@ export class CanvasService {
         'error',
         `can't find canvas pageId: ${pageId}, roomId:${roomId}`,
       );
+      return {
+        message: `不存在的pageId:${pageId}`,
+      };
     }
   }
 

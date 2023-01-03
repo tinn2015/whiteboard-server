@@ -76,34 +76,36 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // 离线的时候socket.io room中会自动移除
     // 更新房间状态
     // 更新成员状态
+
     const socket = client.id;
     const user = await this.userRepository.findOne({ socket });
-    if (!user) {
-      console.log('user disconnect error');
-      return;
-    }
-    console.log('handleDisconnect', user);
-    client.leave(user.roomId);
-    user.status = 'offline';
-    await this.userRepository.save(user);
+    // if (!user) {
+    //   console.log('user disconnect error');
+    //   return;
+    // }
+    // console.log('handleDisconnect', user);
+    // client.leave(user.roomId);
+    // user.status = 'offline';
+    // await this.userRepository.save(user);
 
-    // 离线三分钟， 清除user
-    setTimeout(async () => {
-      console.log('socket', client.nsp.sockets.size);
-      const user = await this.userRepository.findOne({ socket });
-      if (user && user.status === 'offline') {
-        await this.userRepository.remove(user);
-        const room = await this.roomRepository.findOne(
-          { id: user.roomId },
-          { relations: ['users', 'canvas'] },
-        );
-        // 更新房间状态
-        if (client.nsp.sockets.size === 0) {
-          room.status = 'closed';
-          this.roomRepository.save(room);
-        }
-      }
-    }, 3 * 60 * 1000);
+    // // 离线三分钟， 清除user
+    // setTimeout(async () => {
+    //   console.log('socket', client.nsp.sockets.size);
+    //   const user = await this.userRepository.findOne({ socket });
+    //   if (user && user.status === 'offline') {
+    //     await this.userRepository.remove(user);
+    //     const room = await this.roomRepository.findOne(
+    //       { id: user.roomId },
+    //       { relations: ['users', 'canvas'] },
+    //     );
+    //     // 更新房间状态
+    //     if (client.nsp.sockets.size === 0) {
+    //       room.status = 'closed';
+    //       this.roomRepository.save(room);
+    //     }
+    //   }
+    // }, 3 * 60 * 1000);
+
     this.logger.log('info', `user ${user.id} 断开 roomId: ${user.roomId}`);
   }
 

@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:16-alpine
 LABEL AUTHOR="douqiting"
 EXPOSE 3000/tcp
 EXPOSE 80/tcp

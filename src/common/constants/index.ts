@@ -1,13 +1,16 @@
 // cmd 清除画布
 export const CMD_CLEAR = 'clear';
 
+// cmd 恢复清除画布
+export const CMD_RECOVERY_CLEARED = 'rc';
+
 // cmd 删除object
 export const CMD_REMOVE = 'remove';
 
 // cmd 修改背景
 export const CMD_BG = 'bg';
 
-// cmd 删除被store的path
+// cmd 删除被store的object
 export const CMD_RS = 'rs';
 
 // cmd 是否有网格

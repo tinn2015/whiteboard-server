@@ -10,15 +10,24 @@ import {
 
 @Entity()
 export class Path {
+  @PrimaryGeneratedColumn()
+  id: string;
+
   @Index()
-  @PrimaryColumn({})
+  @Column({ unique: false })
   pathId: string;
 
   @Column({ unique: false })
   pageId: number;
 
+  @Column({ unique: false })
+  index: number;
+
+  // @Column('json')
+  // pathPoints: any;
+
   @Column('json')
-  pathPoints: any;
+  point: [];
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

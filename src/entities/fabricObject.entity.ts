@@ -21,6 +21,9 @@ export class FabricObject {
   @Column()
   type: string;
 
+  @Column({ default: false })
+  isCleared: boolean;
+
   @Column('json')
   object: any;
 

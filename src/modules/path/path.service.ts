@@ -11,22 +11,18 @@ import { AsyncQueue } from '../../utils/asyncQueue';
 
 @Injectable()
 export class PathService {
-  asyncQueue: AsyncQueue;
+  // asyncQueue: AsyncQueue;
   constructor(
     @InjectRepository(Path) private pathRepository: Repository<Path>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
-    this.asyncQueue = new AsyncQueue();
+    // this.asyncQueue = new AsyncQueue();
   }
   /**
    * 获取path
    */
   async getPath(getPathDto: GetPathDto) {
-    this.logger.log(
-      'info',
-      `pageId: ${getPathDto.pageId}, get Paths pathId: ${getPathDto.pathId}`,
-    );
-    return await this.pathRepository.findOne({ pathId: getPathDto.pathId });
+    return await this.pathRepository.find({ pathId: getPathDto.pathId });
   }
 
   /**
@@ -34,25 +30,33 @@ export class PathService {
    */
   async addPath(pathobj: addPathDto) {
     const { pageId, pathId, pathPoint, index } = pathobj;
-    this.asyncQueue.push({
-      handler: async () => {
-        const pathEntity = await this.pathRepository.findOne({
-          pathId: pathId,
-        });
-        if (!pathEntity) {
-          const saveObj = {
-            pageId: pageId,
-            pathId: pathId,
-            pathPoints: [{ point: pathPoint, index }],
-          };
-          return await this.pathRepository.save(saveObj);
-        } else {
-          const { pathPoints } = pathEntity;
-          pathPoints.push({ point: pathPoint, index });
-          return await this.pathRepository.save(pathEntity);
-        }
-      },
-    });
+    const saveObj = {
+      pageId: pageId,
+      pathId: pathId,
+      // pathPoints: [{ point: pathPoint, index }],
+      point: pathPoint,
+      index: index,
+    };
+    this.pathRepository.save(saveObj);
+    // this.asyncQueue.push({
+    //   handler: async () => {
+    //     const pathEntity = await this.pathRepository.findOne({
+    //       pathId: pathId,
+    //     });
+    //     if (!pathEntity) {
+    //       const saveObj = {
+    //         pageId: pageId,
+    //         pathId: pathId,
+    //         pathPoints: [{ point: pathPoint, index }],
+    //       };
+    //       return await this.pathRepository.save(saveObj);
+    //     } else {
+    //       const { pathPoints } = pathEntity;
+    //       pathPoints.push({ point: pathPoint, index });
+    //       return await this.pathRepository.save(pathEntity);
+    //     }
+    //   },
+    // });
   }
 
   async removePathsByPageId(pageId: number) {
@@ -64,8 +68,12 @@ export class PathService {
   /**
    * 删除某个path的轨迹
    */
-  async removePath(pathIds: string[]) {
-    const pathEntities = await this.pathRepository.findByIds(pathIds);
+  async removePath(pathIds: string[], pageId: number) {
+    if (!pathIds.length) return;
+    const pathEntities = await (
+      await this.pathRepository.find({ pageId: pageId })
+    ).filter((item) => pathIds.includes(item.pathId));
+    console.log('removePath', pathIds, pathEntities.length);
     await this.pathRepository.remove(pathEntities);
   }
 }
