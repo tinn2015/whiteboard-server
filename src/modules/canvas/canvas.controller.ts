@@ -3,6 +3,7 @@ import { Get, Post, Delete } from '@nestjs/common';
 import { CanvasService } from './canvas.service';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
 import { DeleteCanvasDto } from './dto/delete-canvas.dto';
+import { UploadCanvasDto } from './dto/upload-canvas.dto';
 
 @Controller('canvas')
 export class CanvasController {
@@ -19,6 +20,12 @@ export class CanvasController {
   @Post()
   createCanvas(@Body() createCanvasDto: CreateCanvasDto) {
     return this.canvasService.createCanvas(createCanvasDto);
+  }
+
+  // 上传数据到画布
+  @Post('upload')
+  uploadCanvas(@Body() createCanvasDto: UploadCanvasDto) {
+    return this.canvasService.uploadCanvas(createCanvasDto);
   }
 
   /**

@@ -38,25 +38,26 @@ export class PathService {
       index: index,
     };
     this.pathRepository.save(saveObj);
-    // this.asyncQueue.push({
-    //   handler: async () => {
-    //     const pathEntity = await this.pathRepository.findOne({
-    //       pathId: pathId,
-    //     });
-    //     if (!pathEntity) {
-    //       const saveObj = {
-    //         pageId: pageId,
-    //         pathId: pathId,
-    //         pathPoints: [{ point: pathPoint, index }],
-    //       };
-    //       return await this.pathRepository.save(saveObj);
-    //     } else {
-    //       const { pathPoints } = pathEntity;
-    //       pathPoints.push({ point: pathPoint, index });
-    //       return await this.pathRepository.save(pathEntity);
-    //     }
-    //   },
-    // });
+  }
+
+  /**
+   * 批量添加轨迹
+   * @param pathobj
+   */
+  async addPaths(paths: addPathDto[]) {
+    const saveObjects = [];
+    paths.forEach((pathobj) => {
+      const { pageId, pathId, pathPoint, index } = pathobj;
+      const saveObj = {
+        pageId: pageId,
+        pathId: pathId,
+        point: pathPoint,
+        index: index,
+      };
+      saveObjects.push(saveObj);
+    });
+    this.pathRepository.save(saveObjects);
+    return 'success';
   }
 
   async removePathsByPageId(pageId: number) {

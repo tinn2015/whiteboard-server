@@ -17,6 +17,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ModifiedObjects } from '../../typing';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
 import { DeleteCanvasDto } from './dto/delete-canvas.dto';
+import { UploadCanvasDto } from './dto/upload-canvas.dto';
 import * as CONTANTS from '../../common/constants';
 
 const actionMapProps = {
@@ -496,6 +497,36 @@ export class CanvasService {
       pageId: canvas.id,
       roomId,
     };
+  }
+
+  // 保存数据到指定画布
+  async uploadCanvas(uploadCanvasDto: UploadCanvasDto) {
+    const { objects, pid, roomId, userId } = uploadCanvasDto;
+    const fabricObjects = [];
+    for (let i = 0; i < objects.length; i++) {
+      const paths = [];
+      const object: any = objects[i];
+      const { qn, path } = object;
+      if (qn.t === 'path') {
+        path.forEach((item, index) => {
+          paths.push({ pathPoint: item, index, pageId: pid, pathId: qn.oid });
+        });
+      }
+      await this.pathService.addPaths(paths);
+      const fabricObj = {
+        id: qn.oid,
+        pageId: pid,
+        object: object,
+        type: qn.t,
+        canvas: {
+          id: +pid,
+        },
+      };
+      fabricObjects.push(fabricObj);
+    }
+    await this.fabricObjectRepository.save(fabricObjects);
+    await this.socketEventGateway.notifyPullCanvasById(roomId, pid, userId);
+    return { message: '上传数据成功', pid };
   }
 
   /**

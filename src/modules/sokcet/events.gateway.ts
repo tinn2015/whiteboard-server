@@ -248,7 +248,6 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
           );
         }
       });
-    console.log('===sockets===', sockets);
   }
 
   // 删除白板页广播
@@ -277,6 +276,33 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
         }
       });
     console.log('===sockets===', sockets);
+  }
+
+  // 通知拉取指定页数据
+  async notifyPullCanvasById(roomId: string, pageId: number, userId: string) {
+    this.logger.log(
+      'info',
+      `userId: ${userId}, roomId: ${roomId} create new Page: ${pageId}`,
+    );
+    const user = await this.userRepository.findOne({ id: userId });
+    this.logger.log('info', `newWhiteboard get user:${JSON.stringify(user)}`);
+    const sockets = await this.server.in(roomId).fetchSockets();
+    sockets &&
+      sockets.forEach((socket) => {
+        if (socket.id !== user.socket) {
+          socket.emit(
+            'cmd',
+            encode(
+              {
+                roomId,
+                pid: pageId,
+                cmd: 'gp', // gp -> getPage
+              },
+              {},
+            ),
+          );
+        }
+      });
   }
 
   // 创建画布
