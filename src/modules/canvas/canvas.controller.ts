@@ -24,8 +24,8 @@ export class CanvasController {
 
   // 上传数据到画布
   @Post('upload')
-  uploadCanvas(@Body() createCanvasDto: UploadCanvasDto) {
-    return this.canvasService.uploadCanvas(createCanvasDto);
+  uploadCanvas(@Body() uploadCanvasDto: UploadCanvasDto) {
+    return this.canvasService.uploadCanvas(uploadCanvasDto);
   }
 
   /**
