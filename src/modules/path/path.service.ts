@@ -56,7 +56,7 @@ export class PathService {
       };
       saveObjects.push(saveObj);
     });
-    this.pathRepository.save(saveObjects);
+    await this.pathRepository.save(saveObjects);
     return 'success';
   }
 
