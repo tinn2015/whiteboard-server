@@ -106,7 +106,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     //   }
     // }, 3 * 60 * 1000);
 
-    this.logger.log('info', `user ${user.id} 断开 roomId: ${user.roomId}`);
+    // this.logger.log('info', `user ${user.id} 断开 roomId: ${user.roomId}`);
   }
 
   @SubscribeMessage('joinRoom')

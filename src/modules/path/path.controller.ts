@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PathService } from './path.service';
 import { GetPathDto } from './dto/get-path.dto';
+import { addPathDto } from './dto/add-path.dto';
 
 @Controller('paths')
 export class PathController {
@@ -20,7 +21,12 @@ export class PathController {
    * @returns
    */
   @Post('/getPath')
-  getRoom(@Body() getPathDto: GetPathDto) {
+  getPath(@Body() getPathDto: GetPathDto) {
     return this.pathService.getPath(getPathDto);
+  }
+
+  @Post('/uploadPath')
+  uploadPath(@Body() addPathDtos: addPathDto[]) {
+    return this.pathService.addPaths(addPathDtos);
   }
 }
