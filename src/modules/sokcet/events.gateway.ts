@@ -180,7 +180,6 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     } catch (error) {
       this.logger.error('draw get user error', error);
     }
-    console.log('draw', user);
     if (!user) {
       this.logger.error(`不存在的user, socket.id: ${client.id}, 请先joinRoom`);
       const errMsg = JSON.stringify({

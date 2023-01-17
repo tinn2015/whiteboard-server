@@ -304,10 +304,9 @@ export class CanvasService {
    */
   async _cmdClear(roomId: string, data) {
     try {
-      const { oids: cleaarObjectIds } = data;
-      const fabricObjects = await this.fabricObjectRepository.findByIds(
-        cleaarObjectIds,
-      );
+      const { oids: clearObjectIds, eids: eraserOids } = data;
+      const ids = [...clearObjectIds, ...eraserOids];
+      const fabricObjects = await this.fabricObjectRepository.findByIds(ids);
       this.logger.log(
         'info',
         `[cmd clear]roomId: ${roomId} remove, objects: ${fabricObjects.map(
@@ -457,7 +456,7 @@ export class CanvasService {
       .save({
         id: qn.oid,
         pageId: +pid,
-        object: data,
+        object: data.options,
         type: qn.t,
         canvas: {
           id: +pid,
