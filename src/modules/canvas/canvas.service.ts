@@ -175,6 +175,9 @@ export class CanvasService {
       case CONTANTS.CHANGE_PAGE:
         this._setCurrentPage(roomId, data);
         break;
+      case CONTANTS.BATCH_MODIFY:
+        this.modifiedObjects(roomId, data);
+        break;
       default:
         this.logger.error('未匹配得cmd', data);
     }
@@ -183,7 +186,7 @@ export class CanvasService {
   // 批量修改保存到数据库
   async modifiedObjects(roomId: string, data: ModifiedObjects) {
     this.logger.log('info', `room: ${roomId} 批量修改 objects`, data);
-    const { at, mos } = data;
+    const { mos } = data;
     const objectIds = Object.keys(mos);
     try {
       const fabricObjects = await this.fabricObjectRepository.findByIds(
@@ -199,7 +202,9 @@ export class CanvasService {
         const modifiedKeys = Object.keys(modifiedItem);
         if (modifiedKeys.length) {
           modifiedKeys.forEach((key) => {
-            fabricObj.object[key] = modifiedItem[key];
+            if (key !== 'qn') {
+              fabricObj.object[key] = modifiedItem[key];
+            }
           });
         }
       });

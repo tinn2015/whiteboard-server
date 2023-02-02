@@ -40,5 +40,8 @@ export const DRAW_DESELECTION = 'ds';
 // 自由绘轨迹
 export const DRAW_FREE_PATHS = 'fp';
 
+// 批量修改batchModify
+export const BATCH_MODIFY = 'bm';
+
 // group类型
 export const DRAW_GROUP = 'group';
