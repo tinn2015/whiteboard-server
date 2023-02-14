@@ -24,7 +24,7 @@ export class Room {
   @Column({ default: true })
   isGrid: boolean;
 
-  @Column({ default: 'http://172.25.9.11:3000/wbassets/dark.png' })
+  @Column({ default: '' })
   background: string;
 
   @Column({ default: 0 })

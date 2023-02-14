@@ -515,8 +515,8 @@ export class CanvasService {
         path.forEach((item, index) => {
           paths.push({ pathPoint: item, index, pageId: pid, pathId: qn.oid });
         });
+        await this.pathService.addPaths(paths);
       }
-      await this.pathService.addPaths(paths);
       const fabricObj = {
         id: qn.oid,
         pageId: pid,
@@ -529,7 +529,8 @@ export class CanvasService {
       fabricObjects.push(fabricObj);
     }
     await this.fabricObjectRepository.save(fabricObjects);
-    await this.socketEventGateway.notifyPullCanvasById(roomId, pid, userId);
+    userId &&
+      (await this.socketEventGateway.notifyPullCanvasById(roomId, pid, userId));
     return { message: '上传数据成功', pid };
   }
 

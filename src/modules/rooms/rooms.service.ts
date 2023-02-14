@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from '../../entities/room.entity';
@@ -8,6 +8,8 @@ import { CanvasService } from '../canvas/canvas.service';
 import { UsersService } from '../users/users.service';
 import { DeleteRoomDto } from './dto/delete-room.dto';
 import { UpdateCurrentPageDto } from './dto/update-page.dto';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 // import { Room } from './interfaces/rooms.interface'
 
@@ -20,6 +22,7 @@ export class RoomsService {
     @InjectRepository(Room) private roomRepository: Repository<Room>,
     @InjectRepository(Users) private userRepository: Repository<Users>,
     @InjectRepository(Canvas) private canvasRepository: Repository<Canvas>,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
   private readonly rooms = new Map();
 
@@ -50,6 +53,51 @@ export class RoomsService {
 
   setMaxOnlineUsers() {
     //根据当前人数判断是不是大于 最大人数
+  }
+
+  /**
+   * 创建房间并上传数据
+   * 离线包中创建会议
+   * @param roomId
+   * @returns
+   */
+  async createRoom(createRoomDto: CreateRoomDto) {
+    const { currentPage, pages, roomId, bg } = createRoomDto;
+    this.logger.log('info', 'create room', createRoomDto);
+
+    // 已存在的Room, 先删除再创建
+    await this.deleteRoom({ roomId, all: false });
+
+    let currentPageId = 0;
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const canvas = await this.canvasRepository.save({
+        roomId: roomId,
+        room: {
+          id: roomId,
+        },
+      });
+      if (page.objects) {
+        await this.canvasService.uploadCanvas({
+          roomId,
+          pid: canvas.id,
+          objects: page.objects,
+        });
+      }
+      console.log('create room set currentpage', page.pid, currentPage);
+      if (page.pid === currentPage) {
+        currentPageId = canvas.id;
+      }
+    }
+
+    // update room currentPage
+    const room = await this.roomRepository.findOne({
+      id: roomId,
+    });
+    room.currentPage = currentPageId;
+    room.background = bg;
+    await this.roomRepository.save(room);
+    return { msg: 'create room success' };
   }
 
   joinRoom(roomId: string, socketId: string, userId: number) {
