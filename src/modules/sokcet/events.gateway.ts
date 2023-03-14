@@ -61,6 +61,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   ) {
     this.pool = new Piscina({
       filename: path.resolve(__dirname, '../../utils/worker-threads.js'),
+      idleTimeout: 5000, // 不执行任务时5秒后关闭该线程， 避免频繁开启关系线程
     });
 
     console.log('process.env', process.env.NODE_ENV);
@@ -171,54 +172,30 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
 
   @SubscribeMessage('draw')
   async handleEvent(@ConnectedSocket() client: any, @MessageBody() data: any) {
-    let user = null;
-    try {
-      user = await this.userRepository.findOne(
-        { socket: client.id },
-        { relations: ['room'] },
-      );
-    } catch (error) {
-      this.logger.error('draw get user error', error);
-    }
-    if (!user) {
-      this.logger.error(`不存在的user, socket.id: ${client.id}, 请先joinRoom`);
-      const errMsg = JSON.stringify({
-        msg: 'error: need joinRoom',
-      });
-      client.emit(errMsg);
-      // client.disconnect(true);
-      return;
-    }
-    const roomId = user.room.id;
+    // const user = null;
+    const { rid } = data;
+    client.to(rid).emit('syncRoomDraw', data.draw);
     // 工作线程
-    const decryptData = await this.pool.run(data);
-    client.to(roomId).emit('syncRoomDraw', data);
-    this.canvasService.draw(roomId, decryptData);
+    // const decryptData = await this.pool.run(data.draw);
+    const decryptData = decode(data.draw);
+    this.canvasService.draw(rid, decryptData);
   }
 
   @SubscribeMessage('cmd')
   async handleCmd(@ConnectedSocket() client: any, @MessageBody() data: any) {
-    const user = await this.userRepository.findOne(
-      { socket: client.id },
-      { relations: ['room'] },
-    );
-    const roomId = user.room.id;
-    client.to(roomId).emit('cmd', data);
+    const { rid: roomId } = data;
+    client.to(roomId).emit('cmd', data.cmd);
     // 工作线程
-    const decryptData = await this.pool.run(data);
+    const decryptData = await this.pool.run(data.cmd);
     this.canvasService.cmdHandle(roomId, decryptData);
   }
 
   // 修改数据库画笔
   @SubscribeMessage('ms')
   async toServe(@ConnectedSocket() client: any, @MessageBody() data: any) {
-    const user = await this.userRepository.findOne(
-      { socket: client.id },
-      { relations: ['room'] },
-    );
-    const roomId = user.room.id;
+    const { rid: roomId } = data;
     // 工作线程
-    const decryptData = await this.pool.run(data);
+    const decryptData = await this.pool.run(data.ms);
     this.canvasService.modifiedObjects(roomId, decryptData);
   }
 

@@ -32,6 +32,9 @@ const actionMapProps = {
 export class CanvasService {
   private staticCanvas: any;
   private canvasWidth = 1000;
+
+  // 缓存自由绘的轨迹，减少数据库操作
+  private freePathCache: Map<string, any[]>;
   constructor(
     @InjectRepository(Room) private roomRepository: Repository<Room>,
     @InjectRepository(Canvas) private canvasRepository: Repository<Canvas>,
@@ -43,7 +46,9 @@ export class CanvasService {
     @Inject(forwardRef(() => RoomsService))
     private readonly roomsService: RoomsService,
     private readonly pathService: PathService,
-  ) {}
+  ) {
+    this.freePathCache = new Map();
+  }
 
   /**
    * 对canvasJson 进行增加、修改
@@ -70,7 +75,14 @@ export class CanvasService {
         pathId: qn.oid,
         pathPoint: path,
       };
-      this.pathService.addPath(pathobj);
+      let pathPoints = this.freePathCache.get(qn.oid);
+      if (pathPoints) {
+        pathPoints.push(pathobj);
+      } else {
+        pathPoints = [pathobj];
+      }
+      this.freePathCache.set(qn.oid, pathPoints);
+      console.log('freePathCache', this.freePathCache.get(qn.oid).length);
       return;
     }
 
@@ -109,6 +121,12 @@ export class CanvasService {
         });
       }
     } else {
+      // 自由绘先保存轨迹
+      if (qn.t === 'path') {
+        const pathPoints = this.freePathCache.get(qn.oid);
+        this.pathService.addPath(pathPoints);
+        this.freePathCache.delete(qn.oid);
+      }
       this.fabricObjectRepository
         .save({
           id: qn.oid,

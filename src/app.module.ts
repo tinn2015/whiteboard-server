@@ -6,6 +6,7 @@ import { UsersModule } from './modules/users/users.module';
 import { SokcetModule } from './modules/sokcet/sokcet.module';
 import { PathModule } from './modules/path/path.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanvasModule } from './modules/canvas/canvas.module';
 import {
@@ -42,6 +43,8 @@ console.log('====envConfig====', envConfig());
         autoLoadEntities: true,
         synchronize: configService.get('DATABASE_SYNC'), // orm 每次都会同步到数据库。 生产环境禁用
         logging: configService.get('DATABASE_LOGGING'),
+        cache: true,
+        namingStrategy: new SnakeNamingStrategy(),
       }),
       inject: [ConfigService],
     }),

@@ -26,18 +26,22 @@ export class PathService {
   }
 
   /**
-   * 添加轨迹
+   * 添加轨迹点
    */
-  async addPath(pathobj: addPathDto) {
-    const { pageId, pathId, pathPoint, index } = pathobj;
-    const saveObj = {
-      pageId: pageId,
-      pathId: pathId,
-      // pathPoints: [{ point: pathPoint, index }],
-      point: pathPoint,
-      index: index,
-    };
-    this.pathRepository.save(saveObj);
+  async addPath(pathobjs: addPathDto[]) {
+    const saveObjects = pathobjs.map((pathObj) => {
+      const { pageId, pathId, pathPoint, index } = pathObj;
+      const saveObj = {
+        pageId: pageId,
+        pathId: pathId,
+        // pathPoints: [{ point: pathPoint, index }],
+        point: pathPoint,
+        index: index,
+      };
+      return saveObj;
+    });
+
+    this.pathRepository.save(saveObjects);
   }
 
   /**
