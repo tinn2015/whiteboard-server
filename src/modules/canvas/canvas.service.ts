@@ -122,8 +122,8 @@ export class CanvasService {
       }
     } else {
       // 自由绘先保存轨迹
-      if (qn.t === 'path') {
-        const pathPoints = this.freePathCache.get(qn.oid);
+      const pathPoints = this.freePathCache.get(qn.oid);
+      if (qn.t === 'path' && pathPoints) {
         this.pathService.addPath(pathPoints);
         this.freePathCache.delete(qn.oid);
       }

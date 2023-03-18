@@ -27,8 +27,8 @@ const io = new Server();
   cors: {
     origin: '*',
   },
-  pingInterval: 5000,
-  pingTimeout: 5000,
+  pingInterval: 2500,
+  pingTimeout: 2000,
   perMessageDeflate: {
     threshold: 1, // defaults to 1024
 
@@ -233,7 +233,10 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       `userId: ${userId}, roomId: ${roomId} create new Page: ${pageId}`,
     );
     const user = await this.userRepository.findOne({ id: userId });
-    this.logger.log('info', `newWhiteboard get user:${JSON.stringify(user)}`);
+    this.logger.log(
+      'info',
+      `removeWhiteboard get user:${JSON.stringify(user)}`,
+    );
     const sockets = await this.server.in(roomId).fetchSockets();
     sockets &&
       sockets.forEach((socket) => {
@@ -261,7 +264,10 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       `userId: ${userId}, roomId: ${roomId} create new Page: ${pageId}`,
     );
     const user = await this.userRepository.findOne({ id: userId });
-    this.logger.log('info', `newWhiteboard get user:${JSON.stringify(user)}`);
+    this.logger.log(
+      'info',
+      `notifyPullCanvasById get user:${JSON.stringify(user)}`,
+    );
     const sockets = await this.server.in(roomId).fetchSockets();
     sockets &&
       sockets.forEach((socket) => {
