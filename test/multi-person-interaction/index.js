@@ -5,33 +5,34 @@ const { path1, path2, path3 } = require('./mockData');
 const { encode, decode } = require('@msgpack/msgpack');
 
 const CONFIG = {
-  roomId: '711249703',
-  pageId: 118,
-  // roomId: '111',
-  // socketUrl: 'ws://localhost:80', // local
+  // roomId: '711249703',
+  // pageId: 118,
+  roomId: '111',
+  pageId: 9,
+  socketUrl: 'ws://localhost:80', // local
   // socketUrl: 'ws://localhost:80',
-  socketUrl: 'ws://172.25.9.11:3030/', // dev
+  // socketUrl: 'ws://172.25.9.11:3030/', // dev
   participants: [
     {
       userId: '11212122',
       method: 'drawPath',
       drawObj: path1,
       socket: '',
-      interval: 500,
+      interval: 1000,
     },
     {
       userId: '1333333333',
       method: 'drawPath',
       drawObj: path2,
       socket: '',
-      interval: 700,
+      interval: 1500,
     },
     {
       userId: '14444444444',
       method: 'drawPath',
       drawObj: path3,
       socket: '',
-      interval: 1000,
+      interval: 2000,
     },
   ],
 };

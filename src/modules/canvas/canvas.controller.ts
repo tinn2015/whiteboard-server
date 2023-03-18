@@ -4,6 +4,7 @@ import { CanvasService } from './canvas.service';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
 import { DeleteCanvasDto } from './dto/delete-canvas.dto';
 import { UploadCanvasDto } from './dto/upload-canvas.dto';
+import { GetObjectsDto } from './dto/get-object.dto';
 
 @Controller('canvas')
 export class CanvasController {
@@ -28,6 +29,11 @@ export class CanvasController {
     return this.canvasService.uploadCanvas(uploadCanvasDto);
   }
 
+  // 上传数据到画布
+  @Post('getObjects')
+  getObjects(@Body() getObjectsDto: GetObjectsDto) {
+    return this.canvasService.getObjects(getObjectsDto);
+  }
   /**
    * 删除画布
    * @param deleteCanvasDto

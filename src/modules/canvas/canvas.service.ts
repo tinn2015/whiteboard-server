@@ -18,6 +18,7 @@ import { ModifiedObjects } from '../../typing';
 import { CreateCanvasDto } from './dto/create-canvas.dto';
 import { DeleteCanvasDto } from './dto/delete-canvas.dto';
 import { UploadCanvasDto } from './dto/upload-canvas.dto';
+import { GetObjectsDto } from './dto/get-object.dto';
 import * as CONTANTS from '../../common/constants';
 
 const actionMapProps = {
@@ -35,6 +36,7 @@ export class CanvasService {
 
   // 缓存自由绘的轨迹，减少数据库操作
   private freePathCache: Map<string, any[]>;
+
   constructor(
     @InjectRepository(Room) private roomRepository: Repository<Room>,
     @InjectRepository(Canvas) private canvasRepository: Repository<Canvas>,
@@ -149,6 +151,18 @@ export class CanvasService {
           });
         });
     }
+  }
+
+  async getAllObjectIds(pageId: number) {
+    // 获取当前画布的所有objectid
+    const objectIds = await this.fabricObjectRepository.find({
+      select: ['id'],
+      where: {
+        pageId,
+        isCleared: false,
+      },
+    });
+    return objectIds.map((i) => i.id);
   }
 
   /**
@@ -604,6 +618,37 @@ export class CanvasService {
       'info',
       `batch delete canvas ids: ${ids} success, room: ${roomId}`,
     );
+  }
+
+  /**
+   * 获取指定对象
+   * @param pageId
+   * @param oids
+   * @returns
+   */
+  async getObjects(getObjectsDto: GetObjectsDto) {
+    const { oids, pageId } = getObjectsDto;
+    const objects = await this.fabricObjectRepository.findByIds(oids);
+    for (let i = 0; i < objects.length; i++) {
+      const item = objects[i];
+      if (item.isCleared) continue;
+      if (item.type === 'path' || item.type === 'eraser') {
+        const pathPoints = await this.pathService.getPath({
+          pathId: item.id,
+          pageId,
+        });
+        if (pathPoints.length) {
+          const path = pathPoints.map((item) => {
+            return {
+              point: item.point,
+              index: item.index,
+            };
+          });
+          item.object.path = path;
+        }
+      }
+    }
+    return objects.map((i) => i.object);
   }
 
   async _setCurrentPage(roomId: string, data) {

@@ -20,6 +20,7 @@ import { Canvas } from '../../entities/canvas.entity';
 import { decode, encode } from '@msgpack/msgpack';
 import Piscina = require('piscina');
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import * as CONTANTS from '../../common/constants';
 import * as path from 'path';
 
 const io = new Server();
@@ -50,6 +51,8 @@ const io = new Server();
 })
 export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   private pool: Piscina;
+  // 缓存某个房间的timer，用于保证room中的画布一致
+  private roomTimerCache: Map<string, NodeJS.Timeout>;
   constructor(
     // private readonly canvasService: CanvasService,
     @Inject(forwardRef(() => CanvasService))
@@ -63,7 +66,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
       filename: path.resolve(__dirname, '../../utils/worker-threads.js'),
       idleTimeout: 5000, // 不执行任务时5秒后关闭该线程， 避免频繁开启关系线程
     });
-
+    this.roomTimerCache = new Map();
     console.log('process.env', process.env.NODE_ENV);
   }
 
@@ -173,12 +176,13 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   @SubscribeMessage('draw')
   async handleEvent(@ConnectedSocket() client: any, @MessageBody() data: any) {
     // const user = null;
-    const { rid } = data;
-    client.to(rid).emit('syncRoomDraw', data.draw);
+    const { rid: roomId } = data;
+    client.to(roomId).emit('syncRoomDraw', data.draw);
     // 工作线程
     // const decryptData = await this.pool.run(data.draw);
     const decryptData = decode(data.draw);
-    this.canvasService.draw(rid, decryptData);
+    this.canvasService.draw(roomId, decryptData);
+    this.syncPageObject(decryptData, client, roomId);
   }
 
   @SubscribeMessage('cmd')
@@ -188,6 +192,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // 工作线程
     const decryptData = await this.pool.run(data.cmd);
     this.canvasService.cmdHandle(roomId, decryptData);
+    this.syncPageObject(decryptData, client, roomId);
   }
 
   // 修改数据库画笔
@@ -299,5 +304,22 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     room.currentPage = canvas.id;
     await this.roomRepository.save(room);
     return canvas;
+  }
+
+  private syncPageObject(data: any, client: any, roomId: string) {
+    // 获取一个画布上的所有oid
+    const pid = (data.qn && data.qn.pid) || data.pid;
+    const t = data.qn ? data.qn.t : '';
+    if (t === CONTANTS.DRAW_FREE_PATHS) return;
+    const timer = this.roomTimerCache.get(pid);
+    if (timer) {
+      clearTimeout(timer);
+    }
+    const curTimer = setTimeout(async () => {
+      const oids = await this.canvasService.getAllObjectIds(pid);
+      client.to(roomId).emit('revise', encode(oids));
+      client.emit('revise', encode(oids));
+    }, 2000);
+    this.roomTimerCache.set(pid, curTimer);
   }
 }
