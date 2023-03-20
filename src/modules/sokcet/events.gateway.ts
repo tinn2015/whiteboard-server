@@ -317,8 +317,9 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     }
     const curTimer = setTimeout(async () => {
       const oids = await this.canvasService.getAllObjectIds(pid);
-      client.to(roomId).emit('revise', encode(oids));
-      client.emit('revise', encode(oids));
+      const encodeData = encode({ pid, oids });
+      client.to(roomId).emit('revise', encodeData);
+      client.emit('revise', encodeData);
     }, 2000);
     this.roomTimerCache.set(pid, curTimer);
   }
