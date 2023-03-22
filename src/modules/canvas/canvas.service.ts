@@ -183,6 +183,9 @@ export class CanvasService {
       case CONTANTS.CMD_REMOVE:
         this._cmdRemove(roomId, data);
         break;
+      case CONTANTS.BATCH_REMOVE:
+        this._cmdBatchRemove(roomId, data);
+        break;
       case CONTANTS.CMD_RS:
         this._cmdRemoveStore(roomId, data);
         break;
@@ -401,6 +404,34 @@ export class CanvasService {
       await this.fabricObjectRepository.remove(object);
 
       this.logger.log('info', `删除画笔 ${oid}`, data);
+    } catch (err) {
+      this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
+    } finally {
+    }
+  }
+
+  /**
+   * 批量删除
+   * @param roomId
+   * @param data
+   * @returns
+   */
+  async _cmdBatchRemove(roomId: string, data) {
+    console.log(roomId, data);
+    const { oids, pid } = data;
+    try {
+      const objects = await this.fabricObjectRepository.findByIds(oids);
+      if (!objects.length) {
+        this.logger.log(
+          'info',
+          `不存在的画笔 pageId: ${pid}, oid:${oids}`,
+          objects,
+        );
+        return;
+      }
+      await this.fabricObjectRepository.remove(objects);
+
+      this.logger.log('info', `删除画笔 ${oids}`, data);
     } catch (err) {
       this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
     } finally {

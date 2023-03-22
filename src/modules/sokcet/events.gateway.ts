@@ -185,6 +185,19 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     this.syncPageObject(decryptData, client, roomId);
   }
 
+  /**
+   * 新增到数据库， 无需广播
+   */
+  @SubscribeMessage('add')
+  async handleAdd(@ConnectedSocket() client: any, @MessageBody() data: any) {
+    // const user = null;
+    const { rid: roomId } = data;
+    // 工作线程
+    // const decryptData = await this.pool.run(data.draw);
+    const decryptData = decode(data.draw);
+    this.canvasService.draw(roomId, decryptData);
+  }
+
   @SubscribeMessage('cmd')
   async handleCmd(@ConnectedSocket() client: any, @MessageBody() data: any) {
     const { rid: roomId } = data;

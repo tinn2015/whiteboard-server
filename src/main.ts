@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { QueryFailedExceptionFilter } from './common/filters/typeorm-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { json } from 'body-parser';
 import * as compression from 'compression';
 // import {
 //   WinstonModule,
@@ -26,6 +27,9 @@ async function bootstrap() {
 
   // public
   app.useStaticAssets('whiteboard-web');
+
+  // 接触默认request payload的限制问题
+  app.use(json({ limit: '50mb' }));
 
   // 全局logger
   app.useLogger(nestWinston);

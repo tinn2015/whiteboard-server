@@ -43,5 +43,8 @@ export const DRAW_FREE_PATHS = 'fp';
 // 批量修改batchModify
 export const BATCH_MODIFY = 'bm';
 
+// 批量修改batchModify
+export const BATCH_REMOVE = 'br';
+
 // group类型
 export const DRAW_GROUP = 'group';
