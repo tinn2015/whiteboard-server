@@ -660,6 +660,10 @@ export class CanvasService {
   async getObjects(getObjectsDto: GetObjectsDto) {
     const { oids, pageId } = getObjectsDto;
     const objects = await this.fabricObjectRepository.findByIds(oids);
+    this.logger.log(
+      'info',
+      `getObjects: ${objects.length}, oids: ${oids.length}`,
+    );
     for (let i = 0; i < objects.length; i++) {
       const item = objects[i];
       if (item.isCleared) continue;
