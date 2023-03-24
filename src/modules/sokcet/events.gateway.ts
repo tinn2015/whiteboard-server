@@ -20,6 +20,7 @@ import { Canvas } from '../../entities/canvas.entity';
 import { decode, encode } from '@msgpack/msgpack';
 import Piscina = require('piscina');
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { signAesDecrypt } from '../../utils/decrypt';
 import * as CONTANTS from '../../common/constants';
 import * as path from 'path';
 
@@ -72,8 +73,14 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
 
   @WebSocketServer()
   server: Server;
-
   async handleConnection(client: any, ...args: any[]) {
+    const random = client.handshake.headers['x-qn-wb-random'];
+    const signature = client.handshake.headers['x-qn-wb-signature'];
+    const decryptedData = signAesDecrypt(signature);
+    if (random !== decryptedData) {
+      client.emit('error', `403 forbidden`);
+      client.disconnect();
+    }
     return true;
   }
   async handleDisconnect(client: any) {

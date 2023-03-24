@@ -3,8 +3,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AuthorityGuard } from './common/guards/authority.guard';
 import { QueryFailedExceptionFilter } from './common/filters/typeorm-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import helmet from 'helmet';
 import { json } from 'body-parser';
 import * as compression from 'compression';
 // import {
@@ -21,6 +23,9 @@ async function bootstrap() {
   });
 
   const nestWinston = app.get(WINSTON_MODULE_NEST_PROVIDER);
+
+  // 设置响应头， 添加一些常规的安全配置
+  app.use(helmet());
 
   // gzip 压缩
   app.use(compression());
@@ -46,6 +51,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  app.useGlobalGuards(new AuthorityGuard());
+
   await app.listen(3000);
 }
 bootstrap();
