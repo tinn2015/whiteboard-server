@@ -240,6 +240,10 @@ export class CanvasService {
             if (key !== 'qn') {
               fabricObj.object[key] = modifiedItem[key];
             }
+            // [bugfix] 端上的适配比例是根据width计算的， 所以要更新最新的w
+            fabricObj.object.qn &&
+              fabricObj.object.qn.w &&
+              (fabricObj.object.qn.w = modifiedItem.qn.w);
           });
         }
       });
