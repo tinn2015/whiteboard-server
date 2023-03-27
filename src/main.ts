@@ -25,7 +25,11 @@ async function bootstrap() {
   const nestWinston = app.get(WINSTON_MODULE_NEST_PROVIDER);
 
   // 设置响应头， 添加一些常规的安全配置
-  app.use(helmet());
+  // app.use(
+  //   helmet({
+  //     crossOriginOpenerPolicy: false,
+  //   }),
+  // );
 
   // gzip 压缩
   app.use(compression());

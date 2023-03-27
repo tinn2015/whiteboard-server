@@ -76,6 +76,12 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   async handleConnection(client: any, ...args: any[]) {
     const random = client.handshake.headers['x-qn-wb-random'];
     const signature = client.handshake.headers['x-qn-wb-signature'];
+    if (!signature || !random) {
+      this.logger.error(
+        'websocket 请求头不存在 x-qn-wb-random | x-qn-wb-signature',
+      );
+      return;
+    }
     const decryptedData = signAesDecrypt(signature);
     if (random !== decryptedData) {
       client.emit('error', `403 forbidden`);
