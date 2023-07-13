@@ -4,10 +4,13 @@ services:
     restart: always
     build: .
     environment:
-      - RUNNING_ENV=production
+      - RUNNING_ENV=productioncompose
     ports:
       - "8090:3000"
       - "80:80"
+    # links:
+    #   - db
+    # network_mode: host
     volumes:
       - /home/whiteboard-web:/home/whiteboard-web
       - /home/server-logs:/home/logs
@@ -16,6 +19,7 @@ services:
   db:
     image: postgres
     restart: always
+    # network_mode: host
     ports:
       - "5432:5432"
     environment:
