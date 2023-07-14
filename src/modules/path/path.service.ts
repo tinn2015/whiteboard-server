@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, getConnection } from 'typeorm';
 import { addPathDto } from './dto/add-path.dto';
 import { GetPathDto } from './dto/get-path.dto';
 import { Path } from '../../entities/path.entity';
@@ -65,8 +65,15 @@ export class PathService {
   }
 
   async removePathsByPageId(pageId: number) {
-    const paths = await this.pathRepository.find({ pageId: pageId });
-    await this.pathRepository.remove(paths);
+    const connection = getConnection();
+    await connection
+      .createQueryBuilder()
+      .delete()
+      .from(Path)
+      .where('pageId = :pageId', { pageId })
+      .execute();
+    // const paths = await this.pathRepository.find({ pageId: pageId });
+    // await this.pathRepository.remove(paths);
     return;
   }
 
@@ -80,5 +87,12 @@ export class PathService {
     ).filter((item) => pathIds.includes(item.pathId));
     console.log('removePath', pathIds, pathEntities.length);
     await this.pathRepository.remove(pathEntities);
+    // const connection = getConnection();
+    // await connection
+    //   .createQueryBuilder()
+    //   .delete()
+    //   .from(Path)
+    //   .where('pathId IN (:...pathIds)', { pathIds })
+    //   .execute();
   }
 }

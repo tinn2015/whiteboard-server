@@ -15,6 +15,7 @@ export class FabricObject {
   @PrimaryColumn()
   id: string;
 
+  @Index()
   @Column()
   pageId: number;
 

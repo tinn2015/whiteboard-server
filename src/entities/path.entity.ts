@@ -17,6 +17,7 @@ export class Path {
   @Column({ unique: false })
   pathId: string;
 
+  @Index()
   @Column({ unique: false })
   pageId: number;
 

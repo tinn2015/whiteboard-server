@@ -61,3 +61,6 @@ docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pg
 // production
 docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432 --restart=always postgres
 ```
+
+## 内网环境镜像仓库
+172.25.10.100:5555/whiteboard:v1.0.6-alpha9
