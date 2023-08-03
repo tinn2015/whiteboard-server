@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuthorityGuard } from './common/guards/authority.guard';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { QueryFailedExceptionFilter } from './common/filters/typeorm-exception.filter';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
@@ -57,6 +58,16 @@ async function bootstrap() {
   );
 
   app.useGlobalGuards(new AuthorityGuard());
+
+  // swagger
+  const config = new DocumentBuilder()
+    .setTitle('全能白板')
+    .setDescription('白板服务相关api')
+    .setVersion('1.0')
+    .addTag('whiteboard')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('wb/api', app, document);
 
   await app.listen(3000);
 }

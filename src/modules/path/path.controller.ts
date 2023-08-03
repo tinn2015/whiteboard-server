@@ -10,7 +10,8 @@ import {
 import { PathService } from './path.service';
 import { GetPathDto } from './dto/get-path.dto';
 import { addPathDto } from './dto/add-path.dto';
-
+import { ApiTags } from '@nestjs/swagger';
+@ApiTags('paths')
 @Controller('paths')
 export class PathController {
   constructor(private readonly pathService: PathService) {}
