@@ -7,8 +7,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { Canvas } from './canvas.entity';
+import { Path } from './path.entity';
 
 @Entity()
 export class FabricObject {
@@ -32,6 +34,11 @@ export class FabricObject {
     cascade: true,
   })
   canvas: object;
+
+  @OneToMany(() => Path, (path) => path.object, {
+    cascade: true,
+  })
+  points: Path[];
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

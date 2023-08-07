@@ -6,8 +6,9 @@ import {
   UpdateDateColumn,
   PrimaryGeneratedColumn,
   Index,
+  ManyToOne,
 } from 'typeorm';
-
+import { FabricObject } from './fabricObject.entity';
 @Entity()
 export class Path {
   @PrimaryGeneratedColumn()
@@ -29,6 +30,9 @@ export class Path {
 
   @Column('json')
   point: [];
+
+  @ManyToOne(() => FabricObject, (fabricObject) => fabricObject.points)
+  object: FabricObject;
 
   @CreateDateColumn({ type: 'timestamp without time zone' })
   createDate: string;

@@ -37,6 +37,9 @@ export class PathService {
         // pathPoints: [{ point: pathPoint, index }],
         point: pathPoint,
         index: index,
+        object: {
+          id: pathId,
+        },
       };
       return saveObj;
     });
@@ -57,6 +60,9 @@ export class PathService {
         pathId: pathId,
         point: pathPoint,
         index: index,
+        object: {
+          id: pathId,
+        },
       };
       saveObjects.push(saveObj);
     });

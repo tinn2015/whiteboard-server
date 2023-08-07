@@ -10,6 +10,7 @@ export class AuthorityGuard implements CanActivate {
     const reqHeaders = context.switchToHttp().getRequest().headers;
     const random = reqHeaders['x-qn-wb-random'];
     const signature = reqHeaders['x-qn-wb-signature'];
+    if (!signature) return false;
     const decryptedData = signAesDecrypt(signature);
 
     console.log('解密check', random, decryptedData);

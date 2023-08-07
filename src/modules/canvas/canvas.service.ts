@@ -6,7 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, getConnection } from 'typeorm';
+import { Repository, getConnection, createQueryBuilder } from 'typeorm';
 import { EventGateway } from '../sokcet/events.gateway';
 import { RoomsService } from '../rooms/rooms.service';
 import { PathService } from '../path/path.service';
@@ -123,12 +123,6 @@ export class CanvasService {
         });
       }
     } else {
-      // 自由绘先保存轨迹
-      const pathPoints = this.freePathCache.get(qn.oid);
-      if (qn.t === 'path' && pathPoints) {
-        this.pathService.addPath(pathPoints);
-        this.freePathCache.delete(qn.oid);
-      }
       this.fabricObjectRepository
         .save({
           id: qn.oid,
@@ -140,6 +134,12 @@ export class CanvasService {
           },
         })
         .then(() => {
+          // 自由绘先保存轨迹
+          const pathPoints = this.freePathCache.get(qn.oid);
+          if (qn.t === 'path' && pathPoints) {
+            this.pathService.addPath(pathPoints);
+            this.freePathCache.delete(qn.oid);
+          }
           this.logger.log('info', `新建画笔 ${qn.oid}`, data);
         })
         .catch((err) => {
@@ -262,7 +262,7 @@ export class CanvasService {
   async getFabricData(roomId: string, pageId: number) {
     const canvas = await this.canvasRepository.findOne(
       { id: pageId },
-      { relations: ['objects'] },
+      { relations: ['objects', 'objects.points'] },
     );
     // 没有数据
     if (!canvas) {
@@ -278,14 +278,15 @@ export class CanvasService {
     const objKeys = Object.keys(objects);
     for (let i = 0; i < objKeys.length; i++) {
       const item = objects[objKeys[i]];
+      const { points } = item;
       if (item.isCleared) continue;
       if (item.type === 'path' || item.type === 'eraser') {
-        const pathPoints = await this.pathService.getPath({
-          pathId: item.id,
-          pageId,
-        });
-        if (pathPoints.length) {
-          const path = pathPoints.map((item) => {
+        // const pathPoints = await this.pathService.getPath({
+        //   pathId: item.id,
+        //   pageId,
+        // });
+        if (points.length) {
+          const path = points.map((item) => {
             return {
               point: item.point,
               index: item.index,
@@ -308,22 +309,49 @@ export class CanvasService {
   }
 
   async getCanvasByIds(pageIds: number[]) {
+    console.time('getCanvasByIds-time');
     const canvas = await this.canvasRepository.findByIds(pageIds, {
-      relations: ['objects'],
+      relations: ['objects', 'objects.points'],
     });
+    // const canvas = await this.canvasRepository
+    //   .createQueryBuilder('canvas')
+    //   .leftJoinAndSelect('canvas.objects', 'fabricObject')
+    //   .leftJoinAndSelect('fabricObject.points', 'path')
+    //   .select([
+    //     'path.point',
+    //     'path.index',
+    //     'canvas.id',
+    //     'canvas.roomId',
+    //     // 'canvas.objects',
+    //     'fabricObject.id',
+    //     'fabricObject.isCleared',
+    //     'fabricObject.pageId',
+    //     'fabricObject.type',
+    //     'fabricObject.object',
+    //   ])
+    //   .where('fabricObject.isCleared = :flag', { flag: false })
+    //   .getMany();
+    // console.log('getCanvasByIds', canvas, canvas[0].objects[0]);
+    // this.logger.log('info', 'getCanvasByIds', canvas);
+    console.timeEnd('getCanvasByIds-time');
     for (let i = 0; i < canvas.length; i++) {
       const { objects } = canvas[i];
       const filterObjects = [];
       for (let j = 0; j < objects.length; j++) {
         const obj = JSON.parse(JSON.stringify(objects[j]));
+        const { points } = obj;
+        // if (obj.isCleared) {
+        //   obj.path = [];
+        //   continue;
+        // }
         if (obj.isCleared) continue;
         if (obj.type === 'path' || obj.type === 'eraser') {
-          const pathPoints = await this.pathService.getPath({
-            pathId: obj.id,
-            pageId: obj.pageId,
-          });
-          if (pathPoints.length) {
-            const path = pathPoints.map((item) => {
+          // const pathPoints = await this.pathService.getPath({
+          //   pathId: obj.id,
+          //   pageId: obj.pageId,
+          // });
+          if (points.length) {
+            const path = points.map((item) => {
               return {
                 point: item.point,
                 index: item.index,
@@ -332,7 +360,7 @@ export class CanvasService {
             obj.object.path = path;
           }
         }
-        // objects[j] = obj;
+        delete obj.points;
         filterObjects.push(obj);
       }
       canvas[i].objects = filterObjects;
