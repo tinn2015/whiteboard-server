@@ -17,6 +17,7 @@
     "start:prod:development": "cross-env RUNNING_ENV=development node dist/main",
     "start:prod:production": "cross-env RUNNING_ENV=production node dist/main",
     "start:prod:productioncompose": "cross-env RUNNING_ENV=productioncompose node dist/main",
+    "start:prod:productionCluster": "cross-env RUNNING_ENV=productionCluster node dist/main",
     "pm2:prod": "cross-env RUNNING_ENV=development pm2 start dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",

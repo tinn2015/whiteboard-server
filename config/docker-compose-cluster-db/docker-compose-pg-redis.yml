@@ -1,0 +1,27 @@
+version: '3'
+services:
+  redis:
+    image: redis:7.0.12-alpine
+    restart: always
+    ports:
+      - 5379:6379
+    volumes:
+      - /home/redis/data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    # environment:
+      # - REDIS_PASSWORD=qnwbredis123!
+    # command: redis-server --requirepass qnwbredis123!
+    command: redis-server /usr/local/etc/redis/redis.conf
+    container_name: wb-redis
+  db:
+    image: postgres
+    restart: always
+    # network_mode: host
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_PASSWORD=pass123
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - /home/postgre/data:/var/lib/postgresql/data/pgdata
+    container_name: wb-pg

@@ -1,0 +1,21 @@
+version: '3'
+services:
+  wbserver:
+    restart: always
+    image: dev-wb-cluster:v1.0.1
+    environment:
+      - RUNNING_ENV=productionCluster
+      - DB_HOST=172.25.9.11
+      - DB_PORT=5435
+      - DB_NAME=qnwhiteboard
+      - DB_USER=postgres
+      - DB_PASSEORD=pass123
+      - REDIS_HOST=172.25.9.11
+      - REDIS_PORT=5379
+      - REDIS_PASSWORD=qnwbredis123!
+    ports:
+      - "3001:3000"
+      - "3002:80"
+    volumes:
+      - /home/whiteboard-web:/home/whiteboard-web
+      - /home/server-logs:/home/logs

@@ -64,3 +64,9 @@ docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pg
 
 ## 内网环境镜像仓库
 172.25.10.100:5555/whiteboard:v1.0.6-alpha9
+
+# 服务启动
+单机服务走 ./docker-compose.yml
+集群服务
+    数据库： ./config/docker-compose-cluster-db
+    服务： ./config/docker-compose-cluster-server

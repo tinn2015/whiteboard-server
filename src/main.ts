@@ -37,7 +37,7 @@ async function bootstrap() {
   // public
   app.useStaticAssets('whiteboard-web');
 
-  // 接触默认request payload的限制问题
+  // 解除默认request payload的限制问题
   app.use(json({ limit: '50mb' }));
 
   // 全局logger
