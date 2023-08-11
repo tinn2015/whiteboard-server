@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanvasModule } from './modules/canvas/canvas.module';
+import { RedisModule } from './modules/redis/redis.module';
 import {
   WinstonModule,
   utilities as nestWinstonModuleUtilities,
@@ -31,6 +32,7 @@ console.log('====envConfig====', envConfig());
       isGlobal: true, // 作用于全局
       load: [envConfig],
     }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -84,6 +86,7 @@ console.log('====envConfig====', envConfig());
     SokcetModule,
     CanvasModule,
     PathModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService, Logger],

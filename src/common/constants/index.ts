@@ -48,3 +48,13 @@ export const BATCH_REMOVE = 'br';
 
 // group类型
 export const DRAW_GROUP = 'group';
+
+/**
+ * 集群发布订阅常量
+ */
+
+// 画笔事件发布
+export const CHANNEL_WB_DRAW = 'channel-wb-draw';
+
+// 画笔事件发布
+export const CHANNEL_WB_CMD = 'channel-wb-cmd';

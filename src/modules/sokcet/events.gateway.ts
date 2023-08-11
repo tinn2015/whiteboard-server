@@ -14,6 +14,7 @@ import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { CanvasService } from '../canvas/canvas.service';
+import { RedisService } from '../redis/redis.service';
 import { Users } from '../../entities/user.entity';
 import { Room } from '../../entities/room.entity';
 import { Canvas } from '../../entities/canvas.entity';
@@ -62,6 +63,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     @InjectRepository(Room) private roomRepository: Repository<Room>,
     @InjectRepository(Canvas) private canvasRepository: Repository<Canvas>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    @Inject(RedisService) private readonly redisService: RedisService,
   ) {
     this.pool = new Piscina({
       filename: path.resolve(__dirname, '../../utils/worker-threads.js'),
@@ -191,6 +193,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // const user = null;
     const { rid: roomId } = data;
     client.to(roomId).emit('syncRoomDraw', data.draw);
+    this.redisService.drawPublish(data.draw);
     // 工作线程
     // const decryptData = await this.pool.run(data.draw);
     const decryptData = decode(data.draw);

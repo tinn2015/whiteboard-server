@@ -22,5 +22,5 @@ export default {
   DATABASE_HOST: '172.25.9.11',
   REDIS_HOST: '172.25.9.11',
   REDIS_PORT: 5379,
-  REDIS_PASSWORD: 'qnwbredis123',
+  REDIS_PASSWORD: 'qnwbredis123!',
 };
