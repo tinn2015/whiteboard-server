@@ -2,6 +2,7 @@ import commonConfig from './common';
 import development from './env/development';
 import production from './env/production';
 import productioncompose from './env/productioncompose';
+import productionCluster from './env/productionCluster';
 import local from './env/local';
 
 const configs = {
@@ -9,6 +10,7 @@ const configs = {
   production,
   local,
   productioncompose,
+  productionCluster,
 };
 
 const env = process.env.RUNNING_ENV || 'local';

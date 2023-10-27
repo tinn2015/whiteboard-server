@@ -1,9 +1,10 @@
-import { Module, DynamicModule } from '@nestjs/common';
+import { Module, DynamicModule, forwardRef } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SokcetModule } from '../sokcet/sokcet.module';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, forwardRef(() => SokcetModule)],
   // module: RedisModule,
   providers: [RedisService],
   exports: [RedisService],

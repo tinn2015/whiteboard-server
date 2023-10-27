@@ -9,7 +9,6 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
 import { json } from 'body-parser';
 import * as compression from 'compression';
-import { RedisIOAdapter, getAdapter } from './modules/redis/redisIoAdapter';
 import { ConfigService } from '@nestjs/config';
 // import {
 //   WinstonModule,
@@ -32,15 +31,6 @@ async function bootstrap() {
   //     crossOriginOpenerPolicy: false,
   //   }),
   // );
-
-  //
-  // const configService = app.get(ConfigService);
-  // getAdapter(
-  //   configService.get('REDIS_HOST'),
-  //   configService.get('REDIS_PORT'),
-  //   configService.get('REDIS_PASSWORD'),
-  // );
-  // app.useWebSocketAdapter(new RedisIOAdapter(app));
 
   // gzip 压缩
   app.use(compression());

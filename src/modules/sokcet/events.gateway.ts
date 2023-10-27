@@ -192,13 +192,19 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
   async handleEvent(@ConnectedSocket() client: any, @MessageBody() data: any) {
     // const user = null;
     const { rid: roomId } = data;
-    client.to(roomId).emit('syncRoomDraw', data.draw);
-    this.redisService.drawPublish(data.draw);
+    // client.to(roomId).emit('syncRoomDraw', data.draw);
     // 工作线程
     // const decryptData = await this.pool.run(data.draw);
-    const decryptData = decode(data.draw);
+    console.log('====draw====', data);
+    const decryptData: any = decode(data.draw);
+    this.redisService.drawPublish({
+      roomId,
+      qn: decryptData.qn,
+      socketClientId: client.id,
+      draw: data.draw,
+    });
     this.canvasService.draw(roomId, decryptData);
-    this.syncPageObject(decryptData, client, roomId);
+    // this.syncPageObject(decryptData, client, roomId);
   }
 
   /**
@@ -221,7 +227,25 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // 工作线程
     const decryptData = await this.pool.run(data.cmd);
     this.canvasService.cmdHandle(roomId, decryptData);
-    this.syncPageObject(decryptData, client, roomId);
+    // this.syncPageObject(decryptData, client, roomId);
+  }
+
+  /**
+   * 画笔事件的广播
+   * @param data
+   */
+  async broadcastDraw(data: any) {
+    const { roomId, socketClientId, draw, qn } = data;
+    // 工作线程
+    // const decryptData = await this.pool.run(data.draw);
+    // this.server.to(roomId).emit('syncRoomDraw', Buffer.from(draw));
+    const sockets = await this.server.in(roomId).fetchSockets();
+    sockets.forEach((socket) => {
+      if (socket.id !== socketClientId) {
+        socket.emit('syncRoomDraw', Buffer.from(draw));
+      }
+    });
+    this.syncPageObject(qn, roomId);
   }
 
   // 修改数据库画笔
@@ -335,10 +359,22 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     return canvas;
   }
 
-  private syncPageObject(data: any, client: any, roomId: string) {
+  /**
+   * 这是一个兜底的策略， 由于一些难以规避的原因会导致画布不同步
+   *  1. 网络传输不可控，A清除画布的同时B添加一笔，此时可能A显示这一笔，B却收到被A的cmd清除了
+   *  2. 用户行为不可控，A在一直绘制，B在A绘制结束的一瞬间加入，此时B长链接还未建立，且A的画笔还未落地到数据库，导致B丢失这一笔
+   *
+   * todo:
+   *  这种方式会浪费网络带宽， 思考有没有更好的方式
+   *  1. 如给每个动作绑定一个时间，通过时间做逻辑判断，但是需要思考集群方式唯一（统一）时钟问题
+   * @param data
+   * @param roomId
+   * @returns
+   */
+  private syncPageObject(data: any, roomId: string) {
     // 获取一个画布上的所有oid
-    const pid = (data.qn && data.qn.pid) || data.pid;
-    const t = data.qn ? data.qn.t : '';
+    const pid = data.pid;
+    const t = data.t || '';
     if (t === CONTANTS.DRAW_FREE_PATHS) return;
     const timer = this.roomTimerCache.get(pid);
     if (timer) {
@@ -347,8 +383,9 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     const curTimer = setTimeout(async () => {
       const oids = await this.canvasService.getAllObjectIds(pid);
       const encodeData = encode({ pid, oids });
-      client.to(roomId).emit('revise', encodeData);
-      client.emit('revise', encodeData);
+      // client.to(roomId).emit('revise', encodeData);
+      // client.emit('revise', encodeData);
+      this.server.to(roomId).emit('revise', encodeData);
     }, 2000);
     this.roomTimerCache.set(pid, curTimer);
   }
