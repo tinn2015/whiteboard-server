@@ -39,7 +39,13 @@ $ npm run test:cov
 ## docker
 
 ```bash
+// pre
 docker run -d -p 8090:3000 -p 80:80 -e RUNNING_ENV=production -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
+```
+
+```bash
+// pro
+docker run -d -p 3000:3000 -p 8000:80 -e RUNNING_ENV=production -v /home/whiteboard-web:/home/whiteboard-web -v /home/server-logs:/home/logs --restart=always image:tag
 ```
 
 ## docker
@@ -56,10 +62,12 @@ docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pg
 
 // dev
 docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata-dev:/var/lib/postgresql/data/pgdata -p 5433:5432 --restart=always postgres
-```
 
 // production
 docker run -d -e POSTGRES_PASSWORD=pass123 -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432 --restart=always postgres
+
+// production
+docker run -d -e POSTGRES_PASSWORD=sH#wWJjU%RkzHP% -e PGDATA=/var/lib/postgresql/data/pgdata -v /home/whiteboard/postgresql/pgdata:/var/lib/postgresql/data/pgdata -p 5432:5432 --restart=always postgres
 ```
 
 ## 内网环境镜像仓库

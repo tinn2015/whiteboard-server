@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   Injectable,
   Logger,
@@ -449,10 +450,11 @@ export class CanvasService {
    * @returns
    */
   async _cmdBatchRemove(roomId: string, data) {
-    console.log(roomId, data);
+    console.log('批量删除',roomId, data);
     const { oids, pid } = data;
     try {
-      const objects = await this.fabricObjectRepository.findByIds(oids);
+      const objects = await this.fabricObjectRepository.findByIds(oids, {});
+      console.log('_cmdBatchRemove11', objects);
       if (!objects.length) {
         this.logger.log(
           'info',
@@ -461,7 +463,7 @@ export class CanvasService {
         );
         return;
       }
-      await this.fabricObjectRepository.remove(objects);
+      await this.fabricObjectRepository.remove(objects, {});
 
       this.logger.log('info', `删除画笔 ${oids}`, data);
     } catch (err) {

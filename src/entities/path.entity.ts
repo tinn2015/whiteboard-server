@@ -31,7 +31,10 @@ export class Path {
   @Column('json')
   point: [];
 
-  @ManyToOne(() => FabricObject, (fabricObject) => fabricObject.points)
+  @ManyToOne(() => FabricObject, (fabricObject) => fabricObject.points, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   object: FabricObject;
 
   @CreateDateColumn({ type: 'timestamp without time zone' })

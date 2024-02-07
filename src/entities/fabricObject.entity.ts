@@ -36,7 +36,7 @@ export class FabricObject {
   canvas: object;
 
   @OneToMany(() => Path, (path) => path.object, {
-    cascade: true,
+    cascade: ['insert', 'update', 'recover'],
   })
   points: Path[];
 
