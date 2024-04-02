@@ -176,43 +176,43 @@ export class CanvasService {
     this.logger.log('info', `收到cmd消息`, data);
     switch (cmd) {
       case CONTANTS.CMD_CLEAR:
-        this._cmdClear(roomId, data);
+        await this._cmdClear(roomId, data);
         break;
       case CONTANTS.CMD_RECOVERY_CLEARED:
-        this._cmdRecoveryClear(roomId, data);
+        await this._cmdRecoveryClear(roomId, data);
         break;
       case CONTANTS.CMD_REMOVE:
-        this._cmdRemove(roomId, data);
+        await this._cmdRemove(roomId, data);
         break;
       case CONTANTS.BATCH_REMOVE:
-        this._cmdBatchRemove(roomId, data);
+        await this._cmdBatchRemove(roomId, data);
         break;
       case CONTANTS.CMD_RS:
-        this._cmdRemoveStore(roomId, data);
+        await this._cmdRemoveStore(roomId, data);
         break;
       case CONTANTS.CMD_BG:
-        this._setBackground(roomId, data);
+        await this._setBackground(roomId, data);
         break;
       case CONTANTS.CMD_GRID:
-        this._setGrid(roomId, data);
+        await this._setGrid(roomId, data);
         break;
       case CONTANTS.CMD_REMOVE_ERASER:
-        this._removeEraser(roomId, data);
+        await this._removeEraser(roomId, data);
         break;
       case CONTANTS.CMD_ADD_ERASER:
-        this._addEraser(roomId, data);
+        await this._addEraser(roomId, data);
         break;
       case CONTANTS.PRE_PAGE:
-        this._setCurrentPage(roomId, data);
+        await this._setCurrentPage(roomId, data);
         break;
       case CONTANTS.NEXT_PAGE:
-        this._setCurrentPage(roomId, data);
+        await this._setCurrentPage(roomId, data);
         break;
       case CONTANTS.CHANGE_PAGE:
-        this._setCurrentPage(roomId, data);
+        await this._setCurrentPage(roomId, data);
         break;
       case CONTANTS.BATCH_MODIFY:
-        this.modifiedObjects(roomId, data);
+        await this.modifiedObjects(roomId, data);
         break;
       default:
         this.logger.error('未匹配得cmd', data);
@@ -436,7 +436,7 @@ export class CanvasService {
       }
       await this.fabricObjectRepository.remove(object);
 
-      this.logger.log('info', `删除画笔 ${oid}`, data);
+      this.logger.log('info', `删除画笔 ${oid}`);
     } catch (err) {
       this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
     } finally {
@@ -450,11 +450,9 @@ export class CanvasService {
    * @returns
    */
   async _cmdBatchRemove(roomId: string, data) {
-    console.log('批量删除',roomId, data);
     const { oids, pid } = data;
     try {
       const objects = await this.fabricObjectRepository.findByIds(oids, {});
-      console.log('_cmdBatchRemove11', objects);
       if (!objects.length) {
         this.logger.log(
           'info',
@@ -465,7 +463,7 @@ export class CanvasService {
       }
       await this.fabricObjectRepository.remove(objects, {});
 
-      this.logger.log('info', `删除画笔 ${oids}`, data);
+      this.logger.log('info', `删除画笔 ${oids}`);
     } catch (err) {
       this.logger.error(`room: ${roomId} 删除画笔失败`, err, data);
     } finally {

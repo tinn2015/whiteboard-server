@@ -194,8 +194,8 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     // 工作线程
     // const decryptData = await this.pool.run(data.draw);
     const decryptData = decode(data.draw);
-    this.canvasService.draw(roomId, decryptData);
-    this.syncPageObject(decryptData, client, roomId);
+    await this.canvasService.draw(roomId, decryptData);
+    this.syncPageObject(decryptData, client, roomId, 'draw');
   }
 
   /**
@@ -217,8 +217,8 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     client.to(roomId).emit('cmd', data.cmd);
     // 工作线程
     const decryptData = await this.pool.run(data.cmd);
-    this.canvasService.cmdHandle(roomId, decryptData);
-    this.syncPageObject(decryptData, client, roomId);
+    await this.canvasService.cmdHandle(roomId, decryptData);
+    this.syncPageObject(decryptData, client, roomId, 'cmd');
   }
 
   // 修改数据库画笔
@@ -332,7 +332,7 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     return canvas;
   }
 
-  private syncPageObject(data: any, client: any, roomId: string) {
+  private syncPageObject(data: any, client: any, roomId: string, type: string) {
     // 获取一个画布上的所有oid
     const pid = (data.qn && data.qn.pid) || data.pid;
     const t = data.qn ? data.qn.t : '';
@@ -340,12 +340,17 @@ export class EventGateway implements OnGatewayDisconnect, OnGatewayConnection {
     const timer = this.roomTimerCache.get(pid);
     if (timer) {
       clearTimeout(timer);
+      this.roomTimerCache.delete(pid);
     }
     const curTimer = setTimeout(async () => {
       const oids = await this.canvasService.getAllObjectIds(pid);
-      const encodeData = encode({ pid, oids });
+      const encodeData = encode({ pid, oids, type });
       client.to(roomId).emit('revise', encodeData);
       client.emit('revise', encodeData);
+      this.logger.log(
+        'info',
+        `[sync oids]roomId:${roomId},pageId:${pid}, oids:${oids.length}, type:${type}`,
+      );
     }, 2000);
     this.roomTimerCache.set(pid, curTimer);
   }
